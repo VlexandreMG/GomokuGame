@@ -1,0 +1,14 @@
+D:\Prog\Projet\GomokuGame\obj\Debug\net8.0-windows\..GeneratedMSBuildEditorConfig.editorconfig
+D:\Prog\Projet\GomokuGame\obj\Debug\net8.0-windows\..AssemblyInfoInputs.cache
+D:\Prog\Projet\GomokuGame\obj\Debug\net8.0-windows\..AssemblyInfo.cs
+D:\Prog\Projet\GomokuGame\obj\Debug\net8.0-windows\..csproj.CoreCompileInputs.cache
+D:\Prog\Projet\GomokuGame\bin\Debug\net8.0-windows\..exe
+D:\Prog\Projet\GomokuGame\bin\Debug\net8.0-windows\..deps.json
+D:\Prog\Projet\GomokuGame\bin\Debug\net8.0-windows\..runtimeconfig.json
+D:\Prog\Projet\GomokuGame\bin\Debug\net8.0-windows\..dll
+D:\Prog\Projet\GomokuGame\bin\Debug\net8.0-windows\..pdb
+D:\Prog\Projet\GomokuGame\obj\Debug\net8.0-windows\..dll
+D:\Prog\Projet\GomokuGame\obj\Debug\net8.0-windows\refint\..dll
+D:\Prog\Projet\GomokuGame\obj\Debug\net8.0-windows\..pdb
+D:\Prog\Projet\GomokuGame\obj\Debug\net8.0-windows\..genruntimeconfig.cache
+D:\Prog\Projet\GomokuGame\obj\Debug\net8.0-windows\ref\..dll
