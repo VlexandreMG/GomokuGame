@@ -2,24 +2,41 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
+using GomokuGame.ui;
 using GomokuGame.ui.atoms; // Pour utiliser l'atome GamePoint
 
 namespace GomokuGame.ui.organisms
 {
-    public class GameBoard : Panel
+    public class GameBoard : BaseComponent
     {
         public int GridSize { get; set; } = 15;
         public int CellSize { get; set; } = 40;
-        public int Margin { get; set; } = 20;
+        public int BoardMargin { get; set; } = 20;
 
         // Ta liste d'atomes "GamePoint" déjà posés
         public List<GamePoint> PlacedPoints { get; set; } = new List<GamePoint>();
 
-        public GameBoard()
+        protected override void CreateComponents()
+        {
+        }
+
+        protected override void SetupLayout()
+        {
+            this.Dock = DockStyle.Fill;
+        }
+
+        protected override void ApplyDefaultStyles()
         {
             this.DoubleBuffered = true; // Pour éviter les clignotements
             this.BackColor = Color.NavajoWhite; // Couleur "plateau de jeu"
-            this.Dock = DockStyle.Fill;
+        }
+
+        protected override void SetupEventHandlers()
+        {
+        }
+
+        protected override void Initialize()
+        {
         }
 
         // LA méthode qui dessine tout l'organisme
@@ -40,11 +57,11 @@ namespace GomokuGame.ui.organisms
                 for (int i = 0; i < GridSize; i++)
                 {
                     // Lignes horizontales
-                    g.DrawLine(pen, Margin, Margin + (i * CellSize), 
-                                    Margin + ((GridSize - 1) * CellSize), Margin + (i * CellSize));
+                    g.DrawLine(pen, BoardMargin, BoardMargin + (i * CellSize), 
+                                    BoardMargin + ((GridSize - 1) * CellSize), BoardMargin + (i * CellSize));
                     // Lignes verticales
-                    g.DrawLine(pen, Margin + (i * CellSize), Margin, 
-                                    Margin + (i * CellSize), Margin + ((GridSize - 1) * CellSize));
+                    g.DrawLine(pen, BoardMargin + (i * CellSize), BoardMargin, 
+                                    BoardMargin + (i * CellSize), BoardMargin + ((GridSize - 1) * CellSize));
                 }
             }
         }
@@ -54,8 +71,8 @@ namespace GomokuGame.ui.organisms
             foreach (var pt in PlacedPoints)
             {
                 // Convertir (x, y) de la matrice en pixels
-                Point visualLoc = new Point(Margin + (pt.Coordinates.X * CellSize), 
-                                            Margin + (pt.Coordinates.Y * CellSize));
+                Point visualLoc = new Point(BoardMargin + (pt.Coordinates.X * CellSize), 
+                                            BoardMargin + (pt.Coordinates.Y * CellSize));
                 pt.Draw(g, visualLoc); // Appeler le dessin de l'atome
             }
         }
