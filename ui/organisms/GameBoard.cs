@@ -15,6 +15,7 @@ namespace GomokuGame.ui.organisms
 
         // Ta liste d'atomes "GamePoint" déjà posés
         public List<GamePoint> PlacedPoints { get; set; } = new List<GamePoint>();
+        public List<(Point Start, Point End, Color Color)> WinningLines { get; } = new List<(Point Start, Point End, Color Color)>();
 
         protected override void CreateComponents()
         {
@@ -48,6 +49,7 @@ namespace GomokuGame.ui.organisms
 
             DrawGridLines(g);
             DrawAllPoints(g);
+            DrawWinningLine(g);
         }
 
         private void DrawGridLines(Graphics g)
@@ -74,6 +76,31 @@ namespace GomokuGame.ui.organisms
                 Point visualLoc = new Point(BoardMargin + (pt.Coordinates.X * CellSize), 
                                             BoardMargin + (pt.Coordinates.Y * CellSize));
                 pt.Draw(g, visualLoc); // Appeler le dessin de l'atome
+            }
+        }
+
+        public void AddWinningLine(Point start, Point end, Color color)
+        {
+            WinningLines.Add((start, end, color));
+            Invalidate();
+        }
+
+        private void DrawWinningLine(Graphics g)
+        {
+            if (WinningLines.Count == 0)
+            {
+                return;
+            }
+
+            foreach (var line in WinningLines)
+            {
+                Point startPixel = new Point(BoardMargin + (line.Start.X * CellSize), BoardMargin + (line.Start.Y * CellSize));
+                Point endPixel = new Point(BoardMargin + (line.End.X * CellSize), BoardMargin + (line.End.Y * CellSize));
+
+                using (Pen winPen = new Pen(line.Color, 6))
+                {
+                    g.DrawLine(winPen, startPixel, endPixel);
+                }
             }
         }
     }

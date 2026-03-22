@@ -2,6 +2,7 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
+using GomokuGame.core;
 using GomokuGame.ui.organisms;
 using GomokuGame.ui.atoms;
 
@@ -10,9 +11,12 @@ namespace GomokuGame.ui
     public partial class Form1 : Form
     {
         private GameBoard _board = null!;
+        private GomokuEngine _engine = null!;
 
         public Form1()
         {
+            TerminalLogger.Initialize();
+            TerminalLogger.Action("Form1 constructor called");
             InitializeComponent();
             InitializeLifecycle();
         }
@@ -30,6 +34,7 @@ namespace GomokuGame.ui
         {
             _board = new GameBoard();
             this.Controls.Add(_board);
+            TerminalLogger.Action("GameBoard component created and added to form");
         }
 
         private void SetupLayout()
@@ -50,24 +55,44 @@ namespace GomokuGame.ui
 
         private void Initialize()
         {
+            _engine = new GomokuEngine(_board.GridSize);
+            TerminalLogger.Action("Form initialization complete");
         }
 
         private void Board_MouseClick(object? sender, MouseEventArgs e)
         {
+            TerminalLogger.Action($"Mouse click received at pixel=({e.X},{e.Y})");
+
             // Convertir le clic pixel en coordonnées de matrice
             int x = (int)Math.Round((float)(e.X - _board.BoardMargin) / _board.CellSize);
             int y = (int)Math.Round((float)(e.Y - _board.BoardMargin) / _board.CellSize);
+            TerminalLogger.Action($"Translated to grid position=({x},{y})");
 
             // Vérifier qu'on est bien sur une intersection de la grille
             if (x >= 0 && x < _board.GridSize && y >= 0 && y < _board.GridSize)
             {
-                // Pour le test : on alterne Bleu et Rouge
-                Color pointColor = (_board.PlacedPoints.Count % 2 == 0) ? Color.Blue : Color.Red;
-                
-                // CRÉER L'ATOME et l'ajouter à l'organisme
-                _board.PlacedPoints.Add(new GamePoint(x, y, pointColor));
+                if (!_engine.TryPlaceStone(x, y, out GameStone? placedStone, out IReadOnlyList<WinningLine> newWinningLines) || placedStone is null)
+                {
+                    TerminalLogger.Action("Move ignored by engine");
+                    return;
+                }
+
+                var placedPoint = new GamePoint(placedStone.X, placedStone.Y, placedStone.Color);
+                _board.PlacedPoints.Add(placedPoint);
+                TerminalLogger.Action($"UI point added at ({placedStone.X},{placedStone.Y}) with color={placedStone.Color.Name}");
+
+                foreach (WinningLine line in newWinningLines)
+                {
+                    _board.AddWinningLine(line.Start, line.End, line.Color);
+                    TerminalLogger.Action($"Winning line rendered from ({line.Start.X},{line.Start.Y}) to ({line.End.X},{line.End.Y})");
+                }
+
                 _board.Invalidate(); // Force à redessiner le plateau (OnPaint)
+                TerminalLogger.Action("Board invalidated for repaint");
+                return;
             }
+
+            TerminalLogger.Action("Click ignored because it is outside grid bounds");
         }
     }
 }

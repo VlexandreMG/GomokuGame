@@ -1,0 +1,12 @@
+1 - Je veux que tu implémentes une logique de "scan bidirectionnel" , c'est à dire ,
+ à chaque fois , que le joueur pose un point , le code comptera le nombre de point à disponible dans toutes les directions , 
+ et si la somme donne cinq avec le point que le joueur vient de poser , alors , sur le dessin il en fera une ligne;
+
+2 - Ouii ça marche , mais on peut toujours continuer la partie , mais il y aussi une contrepartie , 
+quand on obtient un ligne, on ne peut pas refaire la même ligne dans la même direction sur les extremités 
+par contre on peut refaire une même ligne dans des direction contraire .
+
+3 - Alors , ça marche pas , mais bon , je veux que tu mette tous ce qui concerene la logique du jeu dans le dossier core . 
+En même temps , règle les lignes car une ligne est defini que par cinq points dans la même direction
+
+4 - A chaque action je veux un message dans le terminal , c'est pour mieux appréhender le code après
