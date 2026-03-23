@@ -16,6 +16,7 @@ namespace GomokuGame.ui
         private GomokuEngine _engine = null!;
         private TurnDetector _turnDetector = null!;
         private int? _pendingBombRowOneBased;
+        private bool _isGameInitialized;
 
         public Form1()
         {
@@ -57,18 +58,50 @@ namespace GomokuGame.ui
             _board.MouseClick += Board_MouseClick; // Gérer le clic sur le plateau
             this.KeyPreview = true;
             this.KeyDown += Form1_KeyDown;
+            this.Shown += Form1_Shown;
         }
 
         private void Initialize()
         {
-            _engine = new GomokuEngine(_board.GridSize);
-            _turnDetector = new TurnDetector("Joueur 1", "Joueur 2");
-            TerminalLogger.Action("Form initialization complete");
+            TerminalLogger.Action("Form initialized, waiting for startup menu");
+        }
+
+        private void Form1_Shown(object? sender, EventArgs e)
+        {
+            if (_isGameInitialized)
+            {
+                return;
+            }
+
+            if (!GameSetupMenu.TryGetConfiguration(this, out GameSetupResult? setup) || setup is null)
+            {
+                TerminalLogger.Action("Startup menu canceled, closing application");
+                this.Close();
+                return;
+            }
+
+            _board.GridSize = setup.GridSize;
+            _board.PlacedPoints.Clear();
+            _board.WinningLines.Clear();
+            _board.DisableBombSelection();
+
+            _engine = new GomokuEngine(setup.GridSize);
+            _turnDetector = new TurnDetector(setup.Player1Name, setup.Player2Name);
+            _isGameInitialized = true;
+
+            TerminalLogger.Action($"Game setup complete: P1={setup.Player1Name} (Blue), P2={setup.Player2Name} (Red), grid={setup.GridSize}");
+            _board.Invalidate();
             PromptCurrentTurnAction();
         }
 
         private void Board_MouseClick(object? sender, MouseEventArgs e)
         {
+            if (!_isGameInitialized)
+            {
+                TerminalLogger.Action("Click ignored: game not initialized yet");
+                return;
+            }
+
             TerminalLogger.Action($"Mouse click received at pixel=({e.X},{e.Y})");
 
             if (_turnDetector.CurrentAction == TurnAction.LaunchBomb)
@@ -138,6 +171,11 @@ namespace GomokuGame.ui
 
         private void Form1_KeyDown(object? sender, KeyEventArgs e)
         {
+            if (!_isGameInitialized)
+            {
+                return;
+            }
+
             if (_turnDetector.CurrentAction != TurnAction.LaunchBomb || !_pendingBombRowOneBased.HasValue)
             {
                 return;

@@ -30,3 +30,8 @@ S'il y en a pas , le projectile n'a aucun effet.
 Et pour la puissance des bombes , on va utiliser le pavé numérique de mon clavier (de 1 à 9). 
 Du coup , pour l'affichage , on mettra des canons sur les extremités des lignes qu'il choisira via clicklistner
 Après que l'utilisateur ait choisie bombe , il choisie quel ligne , un canon apparaît , je clique sur un chiffre du pavé numérique et bam 
+
+8 - T'es troppp fooorttt , maintenant on va se concentrer sur les events 
+d'abord le menu , avant de lancer une partie , le jeu demande de donner le nom du joueur 1 et du joueur 2 , il prévient aussi sur la couleur 
+puis , il lui demande de configurer la taille de la grille. 
+Après , le jeu se lance avec le TurnDetector
