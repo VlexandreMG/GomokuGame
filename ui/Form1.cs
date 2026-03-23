@@ -376,7 +376,13 @@ namespace GomokuGame.ui
 
             if (replayRequested)
             {
-                StartConfiguredGame(_player1Name, _player2Name, _gridSize);
+                if (!GameSetupMenu.TryGetConfiguration(this, out GameSetupResult? setup) || setup is null)
+                {
+                    TerminalLogger.Action("Replay requested but setup menu was canceled");
+                    return;
+                }
+
+                StartConfiguredGame(setup.Player1Name, setup.Player2Name, setup.GridSize);
             }
         }
 

@@ -45,3 +45,5 @@ EtatPartie doit être en cours mais , il peut être arrêter par un bouton termi
 10 - tu gèèèèèrrrreee , quand EtatPartie deveint fin , y aura un alert qui portera le nom de "Resultat de la partie"
 Il montrera le nombre de point de chaque joueur , je ne l'ai pas dit mais à chaque fois qu'un joueur réussi à faire une ligne , il gagne 1 point 
 Qui est le vainqeur ? Et un bouton pour refaire une partie 
+
+11 - Dernier petit changement , quand on clique sur refaire une partie , ça renvoie vraiment vers le GameSetupMenu
