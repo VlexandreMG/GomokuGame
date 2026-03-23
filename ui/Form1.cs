@@ -15,6 +15,7 @@ namespace GomokuGame.ui
         private GameBoard _board = null!;
         private GomokuEngine _engine = null!;
         private TurnDetector _turnDetector = null!;
+        private int? _pendingBombRowOneBased;
 
         public Form1()
         {
@@ -54,6 +55,8 @@ namespace GomokuGame.ui
         private void SetupEventHandlers()
         {
             _board.MouseClick += Board_MouseClick; // Gérer le clic sur le plateau
+            this.KeyPreview = true;
+            this.KeyDown += Form1_KeyDown;
         }
 
         private void Initialize()
@@ -70,11 +73,7 @@ namespace GomokuGame.ui
 
             if (_turnDetector.CurrentAction == TurnAction.LaunchBomb)
             {
-                bool bombCompleted = HandleBombAction();
-                if (bombCompleted)
-                {
-                    MoveToNextTurn();
-                }
+                HandleBombRowSelection(e.X, e.Y);
                 return;
             }
 
@@ -86,7 +85,7 @@ namespace GomokuGame.ui
             // Vérifier qu'on est bien sur une intersection de la grille
             if (x >= 0 && x < _board.GridSize && y >= 0 && y < _board.GridSize)
             {
-                if (!_engine.TryPlaceStone(x, y, out GameStone? placedStone, out IReadOnlyList<WinningLine> newWinningLines) || placedStone is null)
+                if (!_engine.TryPlaceStone(x, y, out GameStone? placedStone, out IReadOnlyList<WinningLine> _) || placedStone is null)
                 {
                     TerminalLogger.Action("Move ignored by engine");
                     return;
@@ -96,11 +95,8 @@ namespace GomokuGame.ui
                 _board.PlacedPoints.Add(placedPoint);
                 TerminalLogger.Action($"UI point added at ({placedStone.X},{placedStone.Y}) with color={placedStone.Color.Name}");
 
-                foreach (WinningLine line in newWinningLines)
-                {
-                    _board.AddWinningLine(line.Start, line.End, line.Color);
-                    TerminalLogger.Action($"Winning line rendered from ({line.Start.X},{line.Start.Y}) to ({line.End.X},{line.End.Y})");
-                }
+                IReadOnlyList<WinningLine> lines = _engine.GetWinningLinesExactFive();
+                SyncWinningLines(lines);
 
                 _board.Invalidate(); // Force à redessiner le plateau (OnPaint)
                 TerminalLogger.Action("Board invalidated for repaint");
@@ -113,27 +109,54 @@ namespace GomokuGame.ui
 
         private void MoveToNextTurn()
         {
+            _pendingBombRowOneBased = null;
+            _board.DisableBombSelection();
             _turnDetector.AdvanceTurn();
             PromptCurrentTurnAction();
         }
 
-        private bool HandleBombAction()
+        private void HandleBombRowSelection(int pixelX, int pixelY)
         {
-            TerminalLogger.Action($"{_turnDetector.CurrentPlayer} initiated bomb action");
-
-            if (!TurnActionAlert.TryGetBombParameters(this, _turnDetector.CurrentPlayer, _board.GridSize, out int selectedLine, out int selectedPower))
+            bool fromLeft = _turnDetector.CurrentPlayer == _turnDetector.Player1;
+            if (_pendingBombRowOneBased.HasValue)
             {
-                TerminalLogger.Action("Bomb action canceled by user");
-                return false;
+                TerminalLogger.Action($"Bomb row already selected: {_pendingBombRowOneBased.Value}, waiting for numpad power");
+                return;
+            }
+
+            if (!_board.TryGetBombRowFromClick(pixelX, pixelY, fromLeft, out int selectedRow))
+            {
+                TerminalLogger.Action("Bomb row selection ignored: click was not on cannon");
+                return;
+            }
+
+            _pendingBombRowOneBased = selectedRow;
+            _board.SetSelectedBombRow(selectedRow);
+            TerminalLogger.Action($"Bomb row selected: row={selectedRow}");
+            TurnActionAlert.ShowBombPowerInputHint(this, _turnDetector.CurrentPlayer, selectedRow);
+        }
+
+        private void Form1_KeyDown(object? sender, KeyEventArgs e)
+        {
+            if (_turnDetector.CurrentAction != TurnAction.LaunchBomb || !_pendingBombRowOneBased.HasValue)
+            {
+                return;
+            }
+
+            int? power = TryMapPowerFromKey(e.KeyCode);
+            if (!power.HasValue)
+            {
+                return;
             }
 
             bool fromLeft = _turnDetector.CurrentPlayer == _turnDetector.Player1;
-            bool success = _engine.TryLaunchBomb(fromLeft, selectedLine, selectedPower, out Point targetCell, out GameStone? removedStone, out IReadOnlyList<WinningLine> currentWinningLines);
+            bool success = _engine.TryLaunchBomb(fromLeft, _pendingBombRowOneBased.Value, power.Value, out Point targetCell, out GameStone? removedStone, out IReadOnlyList<WinningLine> currentWinningLines);
+            TerminalLogger.Action($"Bomb power received from keyboard: {power.Value}");
 
             if (!success)
             {
                 TerminalLogger.Action("Bomb action rejected by engine");
-                return false;
+                return;
             }
 
             if (removedStone is null)
@@ -149,7 +172,10 @@ namespace GomokuGame.ui
             SyncWinningLines(currentWinningLines);
             _board.Invalidate();
             TerminalLogger.Action("Board synchronized after bomb action");
-            return true;
+
+            e.Handled = true;
+            e.SuppressKeyPress = true;
+            MoveToNextTurn();
         }
 
         private void SyncPointsFromEngine()
@@ -175,6 +201,36 @@ namespace GomokuGame.ui
             TurnAction selectedAction = TurnActionAlert.ShowTurnChoice(this, _turnDetector.CurrentPlayer);
             _turnDetector.SetCurrentAction(selectedAction);
             TerminalLogger.Action($"Action prompt displayed for {_turnDetector.CurrentPlayer}");
+
+            if (selectedAction == TurnAction.LaunchBomb)
+            {
+                bool fromLeft = _turnDetector.CurrentPlayer == _turnDetector.Player1;
+                _pendingBombRowOneBased = null;
+                _board.EnableBombSelection(fromLeft);
+                TurnActionAlert.ShowBombRowSelectionHint(this, _turnDetector.CurrentPlayer, fromLeft);
+                TerminalLogger.Action($"Bomb selection enabled (fromLeft={fromLeft})");
+            }
+            else
+            {
+                _board.DisableBombSelection();
+            }
+        }
+
+        private static int? TryMapPowerFromKey(Keys key)
+        {
+            return key switch
+            {
+                Keys.NumPad1 => 1,
+                Keys.NumPad2 => 2,
+                Keys.NumPad3 => 3,
+                Keys.NumPad4 => 4,
+                Keys.NumPad5 => 5,
+                Keys.NumPad6 => 6,
+                Keys.NumPad7 => 7,
+                Keys.NumPad8 => 8,
+                Keys.NumPad9 => 9,
+                _ => null
+            };
         }
     }
 }

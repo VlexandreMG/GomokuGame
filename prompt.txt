@@ -25,3 +25,8 @@ DOnc , si la grille fait du 18 colonnes , 9 designe la 18ème colonne , si le jo
 Alors , y aura un petit règle de trois , si 9 c'est la 18 alors 8 c'est combien , et en prend l'entier car y aure une virgule 
 Après avoir selectionné la puissance , y aura un projectile qui va être lancé sur la colonne designé , s'il y a un point le point s'enlève de la grille 
 S'il y en a pas , le projectile n'a aucun effet. 
+
+7 - ah la la la jsuis refait merchii , mais , je veux que tu mette des lignes sur les grilles pour pouvoir mieux se réferencer quand on envoie les bombes 
+Et pour la puissance des bombes , on va utiliser le pavé numérique de mon clavier (de 1 à 9). 
+Du coup , pour l'affichage , on mettra des canons sur les extremités des lignes qu'il choisira via clicklistner
+Après que l'utilisateur ait choisie bombe , il choisie quel ligne , un canon apparaît , je clique sur un chiffre du pavé numérique et bam 
