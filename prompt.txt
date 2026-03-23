@@ -42,3 +42,6 @@ Après , le jeu se lance avec le TurnDetector
 Il vérifie si la partie est en cours ou fini , après le gameSetupMenu dépassé 
 EtatPartie doit être en cours mais , il peut être arrêter par un bouton terminer la partie en bas de la grille
 
+10 - tu gèèèèèrrrreee , quand EtatPartie deveint fin , y aura un alert qui portera le nom de "Resultat de la partie"
+Il montrera le nombre de point de chaque joueur , je ne l'ai pas dit mais à chaque fois qu'un joueur réussi à faire une ligne , il gagne 1 point 
+Qui est le vainqeur ? Et un bouton pour refaire une partie 

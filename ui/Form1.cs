@@ -20,6 +20,12 @@ namespace GomokuGame.ui
         private EtatPartie _etatPartie = null!;
         private int? _pendingBombRowOneBased;
         private bool _isGameInitialized;
+        private string _player1Name = "Joueur 1";
+        private string _player2Name = "Joueur 2";
+        private int _gridSize = 15;
+        private int _player1Score;
+        private int _player2Score;
+        private readonly HashSet<string> _awardedLineSignatures = new HashSet<string>();
 
         public Form1()
         {
@@ -98,21 +104,7 @@ namespace GomokuGame.ui
                 return;
             }
 
-            _board.GridSize = setup.GridSize;
-            _board.PlacedPoints.Clear();
-            _board.WinningLines.Clear();
-            _board.DisableBombSelection();
-
-            _engine = new GomokuEngine(setup.GridSize);
-            _turnDetector = new TurnDetector(setup.Player1Name, setup.Player2Name);
-            _etatPartie = new EtatPartie();
-            _etatPartie.StartGame();
-            _isGameInitialized = true;
-            _endGameButton.Enabled = true;
-
-            TerminalLogger.Action($"Game setup complete: P1={setup.Player1Name} (Blue), P2={setup.Player2Name} (Red), grid={setup.GridSize}");
-            _board.Invalidate();
-            PromptCurrentTurnAction();
+            StartConfiguredGame(setup.Player1Name, setup.Player2Name, setup.GridSize);
         }
 
         private void Board_MouseClick(object? sender, MouseEventArgs e)
@@ -272,6 +264,43 @@ namespace GomokuGame.ui
             {
                 _board.WinningLines.Add((line.Start, line.End, line.Color));
             }
+
+            UpdateScoresFromLines(lines);
+        }
+
+        private void UpdateScoresFromLines(IReadOnlyList<WinningLine> lines)
+        {
+            foreach (WinningLine line in lines)
+            {
+                string signature = BuildLineSignature(line);
+                if (!_awardedLineSignatures.Add(signature))
+                {
+                    continue;
+                }
+
+                if (line.Color == Color.Blue)
+                {
+                    _player1Score++;
+                    TerminalLogger.Action($"Score updated: {_player1Name} +1 (total={_player1Score})");
+                }
+                else if (line.Color == Color.Red)
+                {
+                    _player2Score++;
+                    TerminalLogger.Action($"Score updated: {_player2Name} +1 (total={_player2Score})");
+                }
+            }
+        }
+
+        private static string BuildLineSignature(WinningLine line)
+        {
+            Point a = line.Start;
+            Point b = line.End;
+
+            bool swap = a.X > b.X || (a.X == b.X && a.Y > b.Y);
+            Point first = swap ? b : a;
+            Point second = swap ? a : b;
+
+            return $"{line.Color.ToArgb()}|{first.X},{first.Y}|{second.X},{second.Y}";
         }
 
         private void PromptCurrentTurnAction()
@@ -336,12 +365,47 @@ namespace GomokuGame.ui
             _board.DisableBombSelection();
             _endGameButton.Enabled = false;
 
-            MessageBox.Show(
+            bool replayRequested = GameResultAlert.ShowResultAndAskReplay(
                 this,
-                "La partie est terminee.",
-                "EtatPartie",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
+                _player1Name,
+                _player1Score,
+                _player2Name,
+                _player2Score);
+
+            TerminalLogger.Action($"Result dialog closed, replayRequested={replayRequested}");
+
+            if (replayRequested)
+            {
+                StartConfiguredGame(_player1Name, _player2Name, _gridSize);
+            }
+        }
+
+        private void StartConfiguredGame(string player1Name, string player2Name, int gridSize)
+        {
+            _player1Name = player1Name;
+            _player2Name = player2Name;
+            _gridSize = gridSize;
+
+            _player1Score = 0;
+            _player2Score = 0;
+            _awardedLineSignatures.Clear();
+
+            _board.GridSize = gridSize;
+            _board.PlacedPoints.Clear();
+            _board.WinningLines.Clear();
+            _board.DisableBombSelection();
+
+            _engine = new GomokuEngine(gridSize);
+            _turnDetector = new TurnDetector(player1Name, player2Name);
+            _etatPartie = new EtatPartie();
+            _etatPartie.StartGame();
+            _pendingBombRowOneBased = null;
+            _isGameInitialized = true;
+            _endGameButton.Enabled = true;
+
+            TerminalLogger.Action($"Game setup complete: P1={player1Name} (Blue), P2={player2Name} (Red), grid={gridSize}");
+            _board.Invalidate();
+            PromptCurrentTurnAction();
         }
     }
 }
