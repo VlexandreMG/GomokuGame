@@ -10,3 +10,12 @@ par contre on peut refaire une même ligne dans des direction contraire .
 En même temps , règle les lignes car une ligne est defini que par cinq points dans la même direction
 
 4 - A chaque action je veux un message dans le terminal , c'est pour mieux appréhender le code après
+
+5 - ça marche mercci , maintenant , on va s'attaquer au particularité du code , il y a des cannons sur chaque ligne. 
+Mais avant d'implémenter les canons , je veux que tu me fait un repertoire dans core , un repertoire event. 
+Dans event , on mettra toutes les classes d'evenements et tu vas m'en faire un en particulier , le detecteur de tour : 
+il aura comme attribut : joueur 1 , joueur 2 , placer un point , lancer une bombe . 
+A chaque debut de partie , il y aure un alert qui va s'afficher sur l'ecran qui dira , c'est le tour du joueur 1 (ou joueur 2) 
+et lui demandera de choisir une action soit placer un point , soit placer une bombe. (Tous ce qui est affichage tu me le fais en atomic design) 
+
+6 - 

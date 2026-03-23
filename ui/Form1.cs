@@ -3,6 +3,7 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 using GomokuGame.core;
+using GomokuGame.core.events;
 using GomokuGame.ui.organisms;
 using GomokuGame.ui.atoms;
 
@@ -12,6 +13,7 @@ namespace GomokuGame.ui
     {
         private GameBoard _board = null!;
         private GomokuEngine _engine = null!;
+        private TurnDetector _turnDetector = null!;
 
         public Form1()
         {
@@ -56,12 +58,22 @@ namespace GomokuGame.ui
         private void Initialize()
         {
             _engine = new GomokuEngine(_board.GridSize);
+            _turnDetector = new TurnDetector("Joueur 1", "Joueur 2");
             TerminalLogger.Action("Form initialization complete");
+            PromptCurrentTurnAction();
         }
 
         private void Board_MouseClick(object? sender, MouseEventArgs e)
         {
             TerminalLogger.Action($"Mouse click received at pixel=({e.X},{e.Y})");
+
+            if (_turnDetector.CurrentAction == TurnAction.LaunchBomb)
+            {
+                TerminalLogger.Action($"{_turnDetector.CurrentPlayer} attempted to launch a bomb");
+                TurnActionAlert.ShowBombNotImplemented(this);
+                MoveToNextTurn();
+                return;
+            }
 
             // Convertir le clic pixel en coordonnées de matrice
             int x = (int)Math.Round((float)(e.X - _board.BoardMargin) / _board.CellSize);
@@ -89,10 +101,24 @@ namespace GomokuGame.ui
 
                 _board.Invalidate(); // Force à redessiner le plateau (OnPaint)
                 TerminalLogger.Action("Board invalidated for repaint");
+                MoveToNextTurn();
                 return;
             }
 
             TerminalLogger.Action("Click ignored because it is outside grid bounds");
+        }
+
+        private void MoveToNextTurn()
+        {
+            _turnDetector.AdvanceTurn();
+            PromptCurrentTurnAction();
+        }
+
+        private void PromptCurrentTurnAction()
+        {
+            TurnAction selectedAction = TurnActionAlert.ShowTurnChoice(this, _turnDetector.CurrentPlayer);
+            _turnDetector.SetCurrentAction(selectedAction);
+            TerminalLogger.Action($"Action prompt displayed for {_turnDetector.CurrentPlayer}");
         }
     }
 }
