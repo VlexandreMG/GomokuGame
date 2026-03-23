@@ -32,7 +32,7 @@ public static class TurnActionAlert
     {
         MessageBox.Show(
             owner,
-            $"{playerName}, ligne {row} selectionnee.\nAppuie maintenant sur une touche du pave numerique (1 a 9) pour tirer.",
+            $"{playerName}, ligne {row} selectionnee.\nAppuie maintenant sur Ctrl + une touche du pave numerique (1 a 9) pour tirer.",
             "Puissance de la bombe",
             MessageBoxButtons.OK,
             MessageBoxIcon.Information);

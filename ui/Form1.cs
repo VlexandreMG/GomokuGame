@@ -213,14 +213,14 @@ namespace GomokuGame.ui
                 return;
             }
 
-            int? power = TryMapPowerFromKey(e.KeyCode);
+            int? power = TryMapPowerFromKey(e.KeyCode, e.Control);
             if (!power.HasValue)
             {
                 return;
             }
 
             bool fromLeft = _turnDetector.CurrentPlayer == _turnDetector.Player1;
-            bool success = _engine.TryLaunchBomb(fromLeft, _pendingBombRowOneBased.Value, power.Value, out Point targetCell, out GameStone? removedStone, out IReadOnlyList<WinningLine> currentWinningLines);
+            bool success = _engine.TryLaunchBomb(fromLeft, _pendingBombRowOneBased.Value, power.Value, out Point targetCell, out GameStone? removedStone, out bool hitProtectedWinningPoint, out IReadOnlyList<WinningLine> currentWinningLines);
             TerminalLogger.Action($"Bomb power received from keyboard: {power.Value}");
 
             if (!success)
@@ -229,7 +229,11 @@ namespace GomokuGame.ui
                 return;
             }
 
-            if (removedStone is null)
+            if (hitProtectedWinningPoint)
+            {
+                TerminalLogger.Action($"Bomb had no effect: ({targetCell.X},{targetCell.Y}) is protected by a winning line");
+            }
+            else if (removedStone is null)
             {
                 TerminalLogger.Action($"Bomb had no effect at ({targetCell.X},{targetCell.Y})");
             }
@@ -329,8 +333,13 @@ namespace GomokuGame.ui
             }
         }
 
-        private static int? TryMapPowerFromKey(Keys key)
+        private static int? TryMapPowerFromKey(Keys key, bool isCtrlPressed)
         {
+            if (!isCtrlPressed)
+            {
+                return null;
+            }
+
             return key switch
             {
                 Keys.NumPad1 => 1,

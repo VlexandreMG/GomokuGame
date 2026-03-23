@@ -47,3 +47,8 @@ Il montrera le nombre de point de chaque joueur , je ne l'ai pas dit mais à cha
 Qui est le vainqeur ? Et un bouton pour refaire une partie 
 
 11 - Dernier petit changement , quand on clique sur refaire une partie , ça renvoie vraiment vers le GameSetupMenu
+
+12 - Y a 3 trucs nouveaux qu'on va faire , la première , si une ligne vient d'être créé et que si l'on tire sur l'un de ces points ,
+la bombe n'aura aucun effet . 
+La deuxième , lorsqu'on envoie une bombe , on doit cliquer sur ctrl + nombre sur pavé numerique
+La troisième , dans data , j'aimerais que tu me fasse une classe qui se connecte à la base de données 

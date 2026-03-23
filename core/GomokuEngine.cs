@@ -7,6 +7,7 @@ public sealed class GomokuEngine
 {
     private readonly Dictionary<Point, GameStone> _stonesByPosition = new Dictionary<Point, GameStone>();
     private readonly List<GameStone> _stones = new List<GameStone>();
+    private readonly HashSet<Point> _protectedWinningPoints = new HashSet<Point>();
     private readonly (int Dx, int Dy)[] _scanDirections =
     {
         (1, 0),
@@ -51,14 +52,16 @@ public sealed class GomokuEngine
 
         placedStone = stone;
         newWinningLines = FindNewWinningLines(stone);
+        ProtectPointsFromNewWinningLines(newWinningLines);
         TerminalLogger.Action($"Scan finished for ({x},{y}), new winning lines={newWinningLines.Count}");
         return true;
     }
 
-    public bool TryLaunchBomb(bool fromLeft, int lineOneBased, int power, out Point targetCell, out GameStone? removedStone, out IReadOnlyList<WinningLine> currentWinningLines)
+    public bool TryLaunchBomb(bool fromLeft, int lineOneBased, int power, out Point targetCell, out GameStone? removedStone, out bool hitProtectedWinningPoint, out IReadOnlyList<WinningLine> currentWinningLines)
     {
         targetCell = Point.Empty;
         removedStone = null;
+        hitProtectedWinningPoint = false;
         currentWinningLines = new List<WinningLine>();
 
         TerminalLogger.Action($"TryLaunchBomb called: fromLeft={fromLeft}, line={lineOneBased}, power={power}");
@@ -86,6 +89,14 @@ public sealed class GomokuEngine
         targetCell = new Point(targetX, targetY);
         TerminalLogger.Action($"Bomb target resolved to ({targetX},{targetY})");
 
+        if (_protectedWinningPoints.Contains(targetCell))
+        {
+            hitProtectedWinningPoint = true;
+            TerminalLogger.Action($"Bomb blocked: ({targetX},{targetY}) is a protected winning-line point");
+            currentWinningLines = GetWinningLinesExactFive();
+            return true;
+        }
+
         if (_stonesByPosition.TryGetValue(targetCell, out GameStone? hitStone))
         {
             _stonesByPosition.Remove(targetCell);
@@ -101,6 +112,36 @@ public sealed class GomokuEngine
         currentWinningLines = GetWinningLinesExactFive();
         TerminalLogger.Action($"Winning lines recomputed after bomb: count={currentWinningLines.Count}");
         return true;
+    }
+
+    private void ProtectPointsFromNewWinningLines(IReadOnlyList<WinningLine> newWinningLines)
+    {
+        foreach (WinningLine line in newWinningLines)
+        {
+            foreach (Point p in EnumerateLinePoints(line))
+            {
+                if (_protectedWinningPoints.Add(p))
+                {
+                    TerminalLogger.Action($"Protected point registered from winning line: ({p.X},{p.Y})");
+                }
+            }
+        }
+    }
+
+    private static IEnumerable<Point> EnumerateLinePoints(WinningLine line)
+    {
+        int dx = Math.Sign(line.End.X - line.Start.X);
+        int dy = Math.Sign(line.End.Y - line.Start.Y);
+
+        int x = line.Start.X;
+        int y = line.Start.Y;
+
+        for (int i = 0; i < 5; i++)
+        {
+            yield return new Point(x, y);
+            x += dx;
+            y += dy;
+        }
     }
 
     public IReadOnlyList<WinningLine> GetWinningLinesExactFive()
