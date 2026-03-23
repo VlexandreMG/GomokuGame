@@ -13,8 +13,11 @@ namespace GomokuGame.ui
     public partial class Form1 : Form
     {
         private GameBoard _board = null!;
+        private Panel _bottomPanel = null!;
+        private Button _endGameButton = null!;
         private GomokuEngine _engine = null!;
         private TurnDetector _turnDetector = null!;
+        private EtatPartie _etatPartie = null!;
         private int? _pendingBombRowOneBased;
         private bool _isGameInitialized;
 
@@ -38,7 +41,21 @@ namespace GomokuGame.ui
         private void CreateComponents()
         {
             _board = new GameBoard();
+            _bottomPanel = new Panel();
+            _endGameButton = new Button();
+
+            _bottomPanel.Dock = DockStyle.Bottom;
+            _bottomPanel.Height = 56;
+            _bottomPanel.Padding = new Padding(12, 10, 12, 10);
+
+            _endGameButton.Dock = DockStyle.Right;
+            _endGameButton.Width = 180;
+            _endGameButton.Text = "Terminer la partie";
+            _endGameButton.Enabled = false;
+
+            _bottomPanel.Controls.Add(_endGameButton);
             this.Controls.Add(_board);
+            this.Controls.Add(_bottomPanel);
             TerminalLogger.Action("GameBoard component created and added to form");
         }
 
@@ -56,6 +73,7 @@ namespace GomokuGame.ui
         private void SetupEventHandlers()
         {
             _board.MouseClick += Board_MouseClick; // Gérer le clic sur le plateau
+            _endGameButton.Click += EndGameButton_Click;
             this.KeyPreview = true;
             this.KeyDown += Form1_KeyDown;
             this.Shown += Form1_Shown;
@@ -87,7 +105,10 @@ namespace GomokuGame.ui
 
             _engine = new GomokuEngine(setup.GridSize);
             _turnDetector = new TurnDetector(setup.Player1Name, setup.Player2Name);
+            _etatPartie = new EtatPartie();
+            _etatPartie.StartGame();
             _isGameInitialized = true;
+            _endGameButton.Enabled = true;
 
             TerminalLogger.Action($"Game setup complete: P1={setup.Player1Name} (Blue), P2={setup.Player2Name} (Red), grid={setup.GridSize}");
             _board.Invalidate();
@@ -99,6 +120,12 @@ namespace GomokuGame.ui
             if (!_isGameInitialized)
             {
                 TerminalLogger.Action("Click ignored: game not initialized yet");
+                return;
+            }
+
+            if (!_etatPartie.IsInProgress)
+            {
+                TerminalLogger.Action("Click ignored: game is finished");
                 return;
             }
 
@@ -144,6 +171,13 @@ namespace GomokuGame.ui
         {
             _pendingBombRowOneBased = null;
             _board.DisableBombSelection();
+
+            if (!_etatPartie.IsInProgress)
+            {
+                TerminalLogger.Action("Turn progression blocked: game is finished");
+                return;
+            }
+
             _turnDetector.AdvanceTurn();
             PromptCurrentTurnAction();
         }
@@ -173,6 +207,12 @@ namespace GomokuGame.ui
         {
             if (!_isGameInitialized)
             {
+                return;
+            }
+
+            if (!_etatPartie.IsInProgress)
+            {
+                TerminalLogger.Action("Keyboard input ignored: game is finished");
                 return;
             }
 
@@ -236,6 +276,12 @@ namespace GomokuGame.ui
 
         private void PromptCurrentTurnAction()
         {
+            if (!_etatPartie.IsInProgress)
+            {
+                TerminalLogger.Action("Turn prompt skipped: game is finished");
+                return;
+            }
+
             TurnAction selectedAction = TurnActionAlert.ShowTurnChoice(this, _turnDetector.CurrentPlayer);
             _turnDetector.SetCurrentAction(selectedAction);
             TerminalLogger.Action($"Action prompt displayed for {_turnDetector.CurrentPlayer}");
@@ -269,6 +315,33 @@ namespace GomokuGame.ui
                 Keys.NumPad9 => 9,
                 _ => null
             };
+        }
+
+        private void EndGameButton_Click(object? sender, EventArgs e)
+        {
+            if (!_isGameInitialized)
+            {
+                TerminalLogger.Action("End game ignored: game not initialized");
+                return;
+            }
+
+            if (!_etatPartie.IsInProgress)
+            {
+                TerminalLogger.Action("End game ignored: game already finished");
+                return;
+            }
+
+            _etatPartie.EndGame("User clicked Terminer la partie");
+            _pendingBombRowOneBased = null;
+            _board.DisableBombSelection();
+            _endGameButton.Enabled = false;
+
+            MessageBox.Show(
+                this,
+                "La partie est terminee.",
+                "EtatPartie",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
         }
     }
 }

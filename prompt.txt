@@ -35,3 +35,10 @@ Après que l'utilisateur ait choisie bombe , il choisie quel ligne , un canon ap
 d'abord le menu , avant de lancer une partie , le jeu demande de donner le nom du joueur 1 et du joueur 2 , il prévient aussi sur la couleur 
 puis , il lui demande de configurer la taille de la grille. 
 Après , le jeu se lance avec le TurnDetector
+
+**Le 8 tsy mande le calcu
+
+9 - Après le TurnDetector validé , y aura un évenement que j'appelle "EtatPartie" 
+Il vérifie si la partie est en cours ou fini , après le gameSetupMenu dépassé 
+EtatPartie doit être en cours mais , il peut être arrêter par un bouton terminer la partie en bas de la grille
+
