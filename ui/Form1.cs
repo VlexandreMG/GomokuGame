@@ -1,5 +1,6 @@
 // ui/Form1.cs
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 using GomokuGame.core;
@@ -69,9 +70,11 @@ namespace GomokuGame.ui
 
             if (_turnDetector.CurrentAction == TurnAction.LaunchBomb)
             {
-                TerminalLogger.Action($"{_turnDetector.CurrentPlayer} attempted to launch a bomb");
-                TurnActionAlert.ShowBombNotImplemented(this);
-                MoveToNextTurn();
+                bool bombCompleted = HandleBombAction();
+                if (bombCompleted)
+                {
+                    MoveToNextTurn();
+                }
                 return;
             }
 
@@ -112,6 +115,59 @@ namespace GomokuGame.ui
         {
             _turnDetector.AdvanceTurn();
             PromptCurrentTurnAction();
+        }
+
+        private bool HandleBombAction()
+        {
+            TerminalLogger.Action($"{_turnDetector.CurrentPlayer} initiated bomb action");
+
+            if (!TurnActionAlert.TryGetBombParameters(this, _turnDetector.CurrentPlayer, _board.GridSize, out int selectedLine, out int selectedPower))
+            {
+                TerminalLogger.Action("Bomb action canceled by user");
+                return false;
+            }
+
+            bool fromLeft = _turnDetector.CurrentPlayer == _turnDetector.Player1;
+            bool success = _engine.TryLaunchBomb(fromLeft, selectedLine, selectedPower, out Point targetCell, out GameStone? removedStone, out IReadOnlyList<WinningLine> currentWinningLines);
+
+            if (!success)
+            {
+                TerminalLogger.Action("Bomb action rejected by engine");
+                return false;
+            }
+
+            if (removedStone is null)
+            {
+                TerminalLogger.Action($"Bomb had no effect at ({targetCell.X},{targetCell.Y})");
+            }
+            else
+            {
+                TerminalLogger.Action($"Bomb removed stone at ({removedStone.X},{removedStone.Y})");
+            }
+
+            SyncPointsFromEngine();
+            SyncWinningLines(currentWinningLines);
+            _board.Invalidate();
+            TerminalLogger.Action("Board synchronized after bomb action");
+            return true;
+        }
+
+        private void SyncPointsFromEngine()
+        {
+            _board.PlacedPoints.Clear();
+            foreach (GameStone stone in _engine.Stones)
+            {
+                _board.PlacedPoints.Add(new GamePoint(stone.X, stone.Y, stone.Color));
+            }
+        }
+
+        private void SyncWinningLines(IReadOnlyList<WinningLine> lines)
+        {
+            _board.WinningLines.Clear();
+            foreach (WinningLine line in lines)
+            {
+                _board.WinningLines.Add((line.Start, line.End, line.Color));
+            }
         }
 
         private void PromptCurrentTurnAction()

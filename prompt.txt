@@ -18,4 +18,10 @@ il aura comme attribut : joueur 1 , joueur 2 , placer un point , lancer une bomb
 A chaque debut de partie , il y aure un alert qui va s'afficher sur l'ecran qui dira , c'est le tour du joueur 1 (ou joueur 2) 
 et lui demandera de choisir une action soit placer un point , soit placer une bombe. (Tous ce qui est affichage tu me le fais en atomic design) 
 
-6 - 
+6 - ça marchee mercciii , je vais maintenant t'expliquer la logique de la bombe , si un joueur choisie bombe 
+Il doit choisir une ligne (s'il est le joueur 1 qui joue , il tire depuis la gauche et vice_versa pour le joueur 2)
+Après avoir choisie sa ligne , il choisir un degrès de puissance de 1 à 9 , 9 designant l'extrémité droite ou gauche de la grille 
+DOnc , si la grille fait du 18 colonnes , 9 designe la 18ème colonne , si le joueur a décidé 8 de puissance 
+Alors , y aura un petit règle de trois , si 9 c'est la 18 alors 8 c'est combien , et en prend l'entier car y aure une virgule 
+Après avoir selectionné la puissance , y aura un projectile qui va être lancé sur la colonne designé , s'il y a un point le point s'enlève de la grille 
+S'il y en a pas , le projectile n'a aucun effet. 
