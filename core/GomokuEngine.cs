@@ -261,16 +261,59 @@ public sealed class GomokuEngine
                 continue;
             }
 
-            for (int startIndex = 0; startIndex + 4 < alignedRun.Count; startIndex += 5)
+            int segmentStart = -1;
+            for (int i = 0; i <= alignedRun.Count; i++)
             {
-                Point start = alignedRun[startIndex];
-                Point end = alignedRun[startIndex + 4];
-                lines.Add(new WinningLine(start, end, originStone.Color));
-                TerminalLogger.Action($"5-block line found: start=({start.X},{start.Y}), end=({end.X},{end.Y}), color={originStone.Color.Name}");
+                bool isEnd = i == alignedRun.Count;
+                bool isProtected = !isEnd && _protectedWinningPoints.Contains(alignedRun[i]);
+
+                if (!isEnd && !isProtected)
+                {
+                    if (segmentStart < 0)
+                    {
+                        segmentStart = i;
+                    }
+
+                    continue;
+                }
+
+                if (segmentStart >= 0)
+                {
+                    int segmentLength = i - segmentStart;
+                    for (int startIndex = segmentStart; startIndex + 4 < segmentStart + segmentLength; startIndex += 5)
+                    {
+                        Point start = alignedRun[startIndex];
+                        Point end = alignedRun[startIndex + 4];
+                        bool includesOrigin = ContainsPointInRange(alignedRun, startIndex, startIndex + 4, originStone.X, originStone.Y);
+                        if (!includesOrigin)
+                        {
+                            continue;
+                        }
+
+                        lines.Add(new WinningLine(start, end, originStone.Color));
+                        TerminalLogger.Action($"5-block line found on unprotected segment: start=({start.X},{start.Y}), end=({end.X},{end.Y}), color={originStone.Color.Name}");
+                    }
+                }
+
+                segmentStart = -1;
             }
         }
 
         return lines;
+    }
+
+    private static bool ContainsPointInRange(List<Point> points, int startIndex, int endIndex, int x, int y)
+    {
+        for (int i = startIndex; i <= endIndex; i++)
+        {
+            Point p = points[i];
+            if (p.X == x && p.Y == y)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>

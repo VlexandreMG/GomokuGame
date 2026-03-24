@@ -19,6 +19,7 @@ namespace GomokuGame.ui
     {
         // ---------- Composants UI ----------
         private GameBoard _board = null!;
+        private Panel _boardHostPanel = null!;
         private Panel _bottomPanel = null!;
         private Button _endGameButton = null!;
         private Button _undoButton = null!;
@@ -75,9 +76,13 @@ namespace GomokuGame.ui
         {
             // Instanciation des contrôles UI.
             _board = new GameBoard();
+            _boardHostPanel = new Panel();
             _bottomPanel = new Panel();
             _endGameButton = new Button();
             _undoButton = new Button();
+
+            _boardHostPanel.Dock = DockStyle.Fill;
+            _boardHostPanel.BackColor = Color.White;
 
             _bottomPanel.Dock = DockStyle.Bottom;
             _bottomPanel.Height = 56;
@@ -95,14 +100,15 @@ namespace GomokuGame.ui
 
             _bottomPanel.Controls.Add(_endGameButton);
             _bottomPanel.Controls.Add(_undoButton);
-            this.Controls.Add(_board);
+            _boardHostPanel.Controls.Add(_board);
+            this.Controls.Add(_boardHostPanel);
             this.Controls.Add(_bottomPanel);
             TerminalLogger.Action("GameBoard component created and added to form");
         }
 
         private void SetupLayout()
         {
-            this.Size = new Size(800, 600);
+            this.Size = new Size(900, 700);
             this.StartPosition = FormStartPosition.CenterScreen;
         }
 
@@ -120,6 +126,12 @@ namespace GomokuGame.ui
             this.KeyPreview = true;
             this.KeyDown += Form1_KeyDown;
             this.Shown += Form1_Shown;
+            this.Resize += Form1_Resize;
+        }
+
+        private void Form1_Resize(object? sender, EventArgs e)
+        {
+            CenterBoardInHost();
         }
 
         private void Initialize()
@@ -647,10 +659,47 @@ namespace GomokuGame.ui
             }
 
             _board.Invalidate();
+            ApplyAdaptiveWindowLayout();
             if (showActionPrompt)
             {
                 PromptCurrentTurnAction();
             }
+        }
+
+        private void ApplyAdaptiveWindowLayout()
+        {
+            Rectangle workingArea = Screen.FromControl(this).WorkingArea;
+            Size boardSize = _board.GetRequiredPixelSize();
+
+            const int horizontalClientPadding = 80;
+            int desiredClientWidth = boardSize.Width + horizontalClientPadding;
+            int nonClientWidth = this.Width - this.ClientSize.Width;
+            if (nonClientWidth < 0)
+            {
+                nonClientWidth = 16;
+            }
+
+            int targetWidth = Math.Min(workingArea.Width, desiredClientWidth + nonClientWidth);
+            int targetHeight = workingArea.Height;
+            int targetX = workingArea.Left + Math.Max(0, (workingArea.Width - targetWidth) / 2);
+
+            this.SetBounds(targetX, workingArea.Top, targetWidth, targetHeight);
+            CenterBoardInHost();
+        }
+
+        private void CenterBoardInHost()
+        {
+            if (_boardHostPanel is null || _board is null)
+            {
+                return;
+            }
+
+            Size boardSize = _board.GetRequiredPixelSize();
+            _board.Size = boardSize;
+
+            int centeredX = Math.Max(0, (_boardHostPanel.ClientSize.Width - boardSize.Width) / 2);
+            int centeredY = Math.Max(0, (_boardHostPanel.ClientSize.Height - boardSize.Height) / 2);
+            _board.Location = new Point(centeredX, centeredY);
         }
 
         private void ConfigurePartieMetadata(string player1Name, string player2Name, int gridWidth, int gridHeight, int partieId)

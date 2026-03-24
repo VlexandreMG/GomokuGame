@@ -38,7 +38,7 @@ namespace GomokuGame.ui.organisms
         /// </summary>
         protected override void SetupLayout()
         {
-            this.Dock = DockStyle.Fill;
+            this.Dock = DockStyle.None;
         }
 
         /// <summary>
@@ -317,6 +317,23 @@ namespace GomokuGame.ui.organisms
             return new Point(
                 BoardMargin + (boardPoint.X * CellSize),
                 BoardMargin + (boardPoint.Y * CellSize));
+        }
+
+        /// <summary>
+        /// Renvoie la taille minimale en pixels nécessaire pour afficher le plateau complet.
+        /// </summary>
+        public Size GetRequiredPixelSize()
+        {
+            int gridPixelWidth = (GridColumns - 1) * CellSize;
+            int gridPixelHeight = (GridRows - 1) * CellSize;
+
+            int rightVisualExtra = Math.Max(36, CannonOffset + CannonWidth);
+            int bottomVisualExtra = Math.Max(24, CannonHeight + 8);
+
+            int width = BoardMargin + gridPixelWidth + rightVisualExtra + 6;
+            int height = BoardMargin + gridPixelHeight + bottomVisualExtra + 6;
+
+            return new Size(width, height);
         }
     }
 }
