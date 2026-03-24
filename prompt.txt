@@ -51,4 +51,40 @@ Qui est le vainqeur ? Et un bouton pour refaire une partie
 12 - Y a 3 trucs nouveaux qu'on va faire , la première , si une ligne vient d'être créé et que si l'on tire sur l'un de ces points ,
 la bombe n'aura aucun effet . 
 La deuxième , lorsqu'on envoie une bombe , on doit cliquer sur ctrl + nombre sur pavé numerique
+<<<<<<< HEAD
 La troisième , dans data , j'aimerais que tu me fasse une classe qui se connecte à la base de données  
+=======
+La troisième , dans data , j'aimerais que tu me fasse une classe qui se connecte à la base de données 
+
+13 - Dans ce projet , j'ai compris beaucoup de chose deja, mais enfaite tu as mal compris quelque chose, lorsqu'un joueur a pu faire une ligne
+si il rajoute un point de continute avec cette ligne, la ligne tracer ne disparait pas c'est tout d'abord. Mais aussi on doit pouvoir faire une nouvelle ligne avec le point hors ligne a cote de
+la ligne deja tracer
+
+14 - Non tu n'as pas vraiment compris le promt13, les points doivent etre lie que lorsqu'ils sont 5 seulement.
+Les extremités ne peuvent pas etre relier avec une nouvelle ligne suivant la ligne deja tracer.
+On doit aussi pouvoir tracer une nouvelle ligne avec le nouveau point qui n'appartient pas a la ligne construite, ils ont donc
+le meme sens la meme longueur mais ne sont pas continue.
+
+15 - maintenant, on va se concentrer sur un le tire de canon, lorsque je joueur 1 tire au canon
+il doit choisir la ligne et ensuite la puissance de tire, il ne peut toucher que les point de son adversaire qui ne sont pas dans des lignes.
+la puissance du canon varie entre 1 a 9 seulement, la puissance 9 signifie que c'est la derniere ligne de colone qui est toucher, et a partir de la
+on fait une regle de trois pour les autres puissances.
+J'ai oublier de preciser que lorsqu'il y a des virgule dans le calcule on prend la partie entiere minimum:
+par exemple si on a une valeur de 8.5 alors on prend 8
+Encore quelque chose a arranger un peu, enfaite lorsqu'un joueur choisi de tirer au canon, qu'il rate ou qu'il fait mouche, on passe au tour du joueur suivant
+
+16 - Pour ce projet, enfaite garde le fonctionnement et les logique deja dit auparavant. 
+Cependant , tu vas modifier la structure de projet , c'est à dire , que pour chaque table dans base.sql 
+tu vas créer des modèles dans le package model , un repository généralisé pour toutes les modèles (j'ai dit un seul pour tous), 
+des services dans le package service où l'on mettra toutes les logiques métiers. 
+Fais ça de manière à ne pas cassser le code mais de manière à ce que cela soit plus lisible (Pour des dev habiuter à java)
+
+17 - maintenant , on va faire correspondre la base de données à la logique de chargement de partie , c'est à dire , que vue qu'on a une partie sauvegarder dans la base de données 
+cette partie devrait être disponible dans la liste des chargements et lorsqu'on clique dessus , on retourne à la partie correspondante (respecter le tour , le nombre de points , les points posés )
+
+18 - maintenant , on va faire un bouton de retour : cela consiste à revenir sur son dernier tour comme pour un ctrl + z 
+c'est à dire , que le tour de l'adversaire ainsi que mon tour précedent sont annulés et le tour me revient (c'est aussi valable pour les tirs au canons)
+
+19 - Maintenant , je veux que tu mettes PLEIN de commentaire en français pour que ça soit plus facile à appréhender
+Et , simplifie l'ecriture du code pour qu'il soit plus lisible et respecte le single responsability 
+>>>>>>> dev
