@@ -13,9 +13,33 @@ D:\Prog\Projet\GomokuGame\obj\Debug\net8.0-windows\..pdb
 D:\Prog\Projet\GomokuGame\obj\Debug\net8.0-windows\..genruntimeconfig.cache
 D:\Prog\Projet\GomokuGame\obj\Debug\net8.0-windows\ref\..dll
 D:\Prog\Projet\GomokuGame\obj\Debug\net8.0-windows\..sourcelink.json
+<<<<<<< HEAD
 D:\Prog\Projet\GomokuGame\bin\Debug\net8.0-windows\Microsoft.Extensions.DependencyInjection.Abstractions.dll
 D:\Prog\Projet\GomokuGame\bin\Debug\net8.0-windows\Microsoft.Extensions.Logging.Abstractions.dll
 D:\Prog\Projet\GomokuGame\bin\Debug\net8.0-windows\Npgsql.dll
 D:\Prog\Projet\GomokuGame\bin\Debug\net8.0-windows\System.Diagnostics.DiagnosticSource.dll
 D:\Prog\Projet\GomokuGame\obj\Debug\net8.0-windows\..csproj.AssemblyReference.cache
 D:\Prog\Projet\GomokuGame\obj\Debug\net8.0-windows\..csproj.Up2Date
+=======
+G:\S4\Porjet Tahina\GomokuGame\bin\Debug\net8.0-windows\..deps.json
+G:\S4\Porjet Tahina\GomokuGame\bin\Debug\net8.0-windows\..runtimeconfig.json
+G:\S4\Porjet Tahina\GomokuGame\bin\Debug\net8.0-windows\..dll
+G:\S4\Porjet Tahina\GomokuGame\bin\Debug\net8.0-windows\..pdb
+G:\S4\Porjet Tahina\GomokuGame\bin\Debug\net8.0-windows\Microsoft.Extensions.DependencyInjection.Abstractions.dll
+G:\S4\Porjet Tahina\GomokuGame\bin\Debug\net8.0-windows\Microsoft.Extensions.Logging.Abstractions.dll
+G:\S4\Porjet Tahina\GomokuGame\bin\Debug\net8.0-windows\Npgsql.dll
+G:\S4\Porjet Tahina\GomokuGame\bin\Debug\net8.0-windows\System.Diagnostics.DiagnosticSource.dll
+G:\S4\Porjet Tahina\GomokuGame\obj\Debug\net8.0-windows\..csproj.AssemblyReference.cache
+G:\S4\Porjet Tahina\GomokuGame\obj\Debug\net8.0-windows\..GeneratedMSBuildEditorConfig.editorconfig
+G:\S4\Porjet Tahina\GomokuGame\obj\Debug\net8.0-windows\..AssemblyInfoInputs.cache
+G:\S4\Porjet Tahina\GomokuGame\obj\Debug\net8.0-windows\..AssemblyInfo.cs
+G:\S4\Porjet Tahina\GomokuGame\obj\Debug\net8.0-windows\..csproj.CoreCompileInputs.cache
+G:\S4\Porjet Tahina\GomokuGame\obj\Debug\net8.0-windows\..sourcelink.json
+G:\S4\Porjet Tahina\GomokuGame\obj\Debug\net8.0-windows\..csproj.Up2Date
+G:\S4\Porjet Tahina\GomokuGame\obj\Debug\net8.0-windows\..dll
+G:\S4\Porjet Tahina\GomokuGame\obj\Debug\net8.0-windows\refint\..dll
+G:\S4\Porjet Tahina\GomokuGame\obj\Debug\net8.0-windows\..pdb
+G:\S4\Porjet Tahina\GomokuGame\obj\Debug\net8.0-windows\..genruntimeconfig.cache
+G:\S4\Porjet Tahina\GomokuGame\obj\Debug\net8.0-windows\ref\..dll
+G:\S4\Porjet Tahina\GomokuGame\bin\Debug\net8.0-windows\..exe
+>>>>>>> d1b9711d20601f3c9440bf845627e4fcc92d7f08

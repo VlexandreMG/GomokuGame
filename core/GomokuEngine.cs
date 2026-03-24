@@ -25,9 +25,9 @@ public sealed class GomokuEngine
         TerminalLogger.Action($"Engine created with grid size {GridSize}");
     }
 
-    public bool TryPlaceStone(int x, int y, out GameStone? placedStone, out IReadOnlyList<WinningLine> newWinningLines)
+    public bool TryPlaceStone(int x, int y, Color stoneColor, out GameStone? placedStone, out IReadOnlyList<WinningLine> newWinningLines)
     {
-        TerminalLogger.Action($"TryPlaceStone called at ({x},{y})");
+        TerminalLogger.Action($"TryPlaceStone called at ({x},{y}) with color={stoneColor.Name}");
         placedStone = null;
         newWinningLines = new List<WinningLine>();
 
@@ -44,7 +44,6 @@ public sealed class GomokuEngine
             return false;
         }
 
-        Color stoneColor = (_stones.Count % 2 == 0) ? Color.Blue : Color.Red;
         var stone = new GameStone(x, y, stoneColor);
         _stones.Add(stone);
         _stonesByPosition[position] = stone;
@@ -57,14 +56,14 @@ public sealed class GomokuEngine
         return true;
     }
 
-    public bool TryLaunchBomb(bool fromLeft, int lineOneBased, int power, out Point targetCell, out GameStone? removedStone, out bool hitProtectedWinningPoint, out IReadOnlyList<WinningLine> currentWinningLines)
+    public bool TryLaunchBomb(bool fromLeft, int lineOneBased, int power, Color shooterColor, out Point targetCell, out GameStone? removedStone, out bool hitProtectedWinningPoint, out IReadOnlyList<WinningLine> currentWinningLines)
     {
         targetCell = Point.Empty;
         removedStone = null;
         hitProtectedWinningPoint = false;
         currentWinningLines = new List<WinningLine>();
 
-        TerminalLogger.Action($"TryLaunchBomb called: fromLeft={fromLeft}, line={lineOneBased}, power={power}");
+        TerminalLogger.Action($"TryLaunchBomb called: fromLeft={fromLeft}, line={lineOneBased}, power={power}, shooterColor={shooterColor.Name}");
 
         if (lineOneBased < 1 || lineOneBased > GridSize)
         {
@@ -78,11 +77,13 @@ public sealed class GomokuEngine
             return false;
         }
 
-        int mappedOneBased = (power * GridSize) / 9;
+        double mappedExact = (power * (double)GridSize) / 9d;
+        int mappedOneBased = (int)Math.Floor(mappedExact);
         if (mappedOneBased < 1)
         {
             mappedOneBased = 1;
         }
+        TerminalLogger.Action($"Bomb power mapping: exact={mappedExact:F2}, floored={mappedOneBased}");
 
         int targetX = fromLeft ? mappedOneBased - 1 : GridSize - mappedOneBased;
         int targetY = lineOneBased - 1;
@@ -99,6 +100,13 @@ public sealed class GomokuEngine
 
         if (_stonesByPosition.TryGetValue(targetCell, out GameStone? hitStone))
         {
+            if (hitStone.Color == shooterColor)
+            {
+                TerminalLogger.Action($"Bomb ignored at ({targetX},{targetY}): target is shooter's own stone ({hitStone.Color.Name})");
+                currentWinningLines = GetWinningLinesExactFive();
+                return true;
+            }
+
             _stonesByPosition.Remove(targetCell);
             _stones.Remove(hitStone);
             removedStone = hitStone;
@@ -159,10 +167,12 @@ public sealed class GomokuEngine
                     continue;
                 }
 
-                int runLength = 1;
                 int x = stone.X;
                 int y = stone.Y;
-                Point end = new Point(stone.X, stone.Y);
+                var runPoints = new List<Point>
+                {
+                    new Point(stone.X, stone.Y)
+                };
 
                 while (true)
                 {
@@ -173,13 +183,17 @@ public sealed class GomokuEngine
                         break;
                     }
 
-                    runLength++;
-                    end = new Point(x, y);
+                    runPoints.Add(new Point(x, y));
                 }
 
-                if (runLength == 5)
+                if (runPoints.Count < 5)
                 {
-                    lines.Add(new WinningLine(new Point(stone.X, stone.Y), end, stone.Color));
+                    continue;
+                }
+
+                for (int startIndex = 0; startIndex + 4 < runPoints.Count; startIndex += 5)
+                {
+                    lines.Add(new WinningLine(runPoints[startIndex], runPoints[startIndex + 4], stone.Color));
                 }
             }
         }
@@ -193,55 +207,54 @@ public sealed class GomokuEngine
 
         foreach (var (dx, dy) in _scanDirections)
         {
-            int forwardCount = CountAlignedStones(originStone, dx, dy, out Point forwardEnd);
-            int backwardCount = CountAlignedStones(originStone, -dx, -dy, out Point backwardEnd);
-            int totalAligned = 1 + forwardCount + backwardCount;
-            TerminalLogger.Action($"Direction ({dx},{dy}) -> backward={backwardCount}, forward={forwardCount}, total={totalAligned}");
+            List<Point> alignedRun = CollectAlignedRunPoints(originStone, dx, dy);
+            TerminalLogger.Action($"Direction ({dx},{dy}) -> alignedRun={alignedRun.Count}");
 
-            // Une ligne est valide uniquement si elle contient exactement 5 points alignes.
-            if (totalAligned == 5)
+            if (alignedRun.Count < 5)
             {
-                lines.Add(new WinningLine(backwardEnd, forwardEnd, originStone.Color));
-                TerminalLogger.Action($"Exact line found: start=({backwardEnd.X},{backwardEnd.Y}), end=({forwardEnd.X},{forwardEnd.Y}), color={originStone.Color.Name}");
+                continue;
+            }
+
+            for (int startIndex = 0; startIndex + 4 < alignedRun.Count; startIndex += 5)
+            {
+                Point start = alignedRun[startIndex];
+                Point end = alignedRun[startIndex + 4];
+                lines.Add(new WinningLine(start, end, originStone.Color));
+                TerminalLogger.Action($"5-block line found: start=({start.X},{start.Y}), end=({end.X},{end.Y}), color={originStone.Color.Name}");
             }
         }
 
         return lines;
     }
 
-    private int CountAlignedStones(GameStone originStone, int dx, int dy, out Point furthestPoint)
+    private List<Point> CollectAlignedRunPoints(GameStone originStone, int dx, int dy)
     {
-        furthestPoint = new Point(originStone.X, originStone.Y);
-        int count = 0;
-        int x = originStone.X;
-        int y = originStone.Y;
+        var runPoints = new List<Point>();
+        int startX = originStone.X;
+        int startY = originStone.Y;
+
+        while (HasSameColorStoneAt(startX - dx, startY - dy, originStone.Color))
+        {
+            startX -= dx;
+            startY -= dy;
+        }
+
+        int x = startX;
+        int y = startY;
 
         while (true)
         {
+            if (!HasSameColorStoneAt(x, y, originStone.Color))
+            {
+                break;
+            }
+
+            runPoints.Add(new Point(x, y));
             x += dx;
             y += dy;
-
-            if (!IsInsideBoard(x, y))
-            {
-                break;
-            }
-
-            var candidatePosition = new Point(x, y);
-            if (!_stonesByPosition.TryGetValue(candidatePosition, out GameStone? candidateStone))
-            {
-                break;
-            }
-
-            if (candidateStone.Color != originStone.Color)
-            {
-                break;
-            }
-
-            count++;
-            furthestPoint = candidatePosition;
         }
 
-        return count;
+        return runPoints;
     }
 
     private bool IsInsideBoard(int x, int y)
