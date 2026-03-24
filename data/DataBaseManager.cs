@@ -13,8 +13,8 @@ namespace GomokuGame.data
         private readonly string _connectionString = 
             "Host=127.0.0.1;" +
             "Port=5432;" +
-            "Username=postgres;" +
-            "Password=postgres;" +
+            "Username=chiu;" +
+            "Password=chiu;" +
             "Database=gomoku_db";
 
         /// <summary>
