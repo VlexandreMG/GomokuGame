@@ -113,16 +113,6 @@ namespace GomokuGame.ui.organisms
             using Font labelFont = new Font("Segoe UI", 9, FontStyle.Bold);
             using Brush labelBrush = new SolidBrush(Color.Black);
 
-            for (int row = 0; row < GridRows; row++)
-            {
-                string label = (row + 1).ToString();
-                SizeF rowTextSize = g.MeasureString(label, labelFont);
-                float rowY = BoardMargin + (row * CellSize) - (rowTextSize.Height / 2f);
-
-                g.DrawString(label, labelFont, labelBrush, BoardMargin - 36, rowY);
-                g.DrawString(label, labelFont, labelBrush, BoardMargin + ((GridColumns - 1) * CellSize) + 20, rowY);
-            }
-
             for (int column = 0; column < GridColumns; column++)
             {
                 string label = (column + 1).ToString();
@@ -130,6 +120,12 @@ namespace GomokuGame.ui.organisms
                 SizeF colTextSize = g.MeasureString(label, labelFont);
                 float colX = BoardMargin + (column * CellSize) - (colTextSize.Width / 2f);
                 g.DrawString(label, labelFont, labelBrush, colX, BoardMargin - 32);
+
+                string reverseLabel = (GridColumns - column).ToString();
+                SizeF bottomTextSize = g.MeasureString(reverseLabel, labelFont);
+                float bottomX = BoardMargin + (column * CellSize) - (bottomTextSize.Width / 2f);
+                float bottomY = BoardMargin + ((GridRows - 1) * CellSize) + 12;
+                g.DrawString(reverseLabel, labelFont, labelBrush, bottomX, bottomY);
             }
         }
 

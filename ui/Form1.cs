@@ -19,8 +19,12 @@ namespace GomokuGame.ui
     {
         // ---------- Composants UI ----------
         private GameBoard _board = null!;
+        private Panel _topPanel = null!;
+        private Label _turnStatusLabel = null!;
         private Panel _boardHostPanel = null!;
         private Panel _bottomPanel = null!;
+        private Button _placePointButton = null!;
+        private Button _shootButton = null!;
         private Button _endGameButton = null!;
         private Button _undoButton = null!;
 
@@ -76,31 +80,93 @@ namespace GomokuGame.ui
         {
             // Instanciation des contrôles UI.
             _board = new GameBoard();
+            _topPanel = new Panel();
+            _turnStatusLabel = new Label();
             _boardHostPanel = new Panel();
             _bottomPanel = new Panel();
+            _placePointButton = new Button();
+            _shootButton = new Button();
             _endGameButton = new Button();
             _undoButton = new Button();
+
+            _topPanel.Dock = DockStyle.Top;
+            _topPanel.Height = 44;
+            _topPanel.Padding = new Padding(12, 8, 12, 8);
+
+            _turnStatusLabel.Dock = DockStyle.Fill;
+            _turnStatusLabel.TextAlign = ContentAlignment.MiddleLeft;
+            _turnStatusLabel.Font = new Font("Segoe UI", 10, FontStyle.Bold);
+            _turnStatusLabel.Text = "Tour en attente...";
+            _topPanel.Controls.Add(_turnStatusLabel);
 
             _boardHostPanel.Dock = DockStyle.Fill;
             _boardHostPanel.BackColor = Color.White;
 
             _bottomPanel.Dock = DockStyle.Bottom;
-            _bottomPanel.Height = 56;
-            _bottomPanel.Padding = new Padding(12, 10, 12, 10);
+            _bottomPanel.Height = 104;
+            _bottomPanel.Padding = new Padding(12, 8, 12, 8);
 
-            _endGameButton.Dock = DockStyle.Right;
+            TableLayoutPanel bottomLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 2
+            };
+            bottomLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 50f));
+            bottomLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 50f));
+
+            FlowLayoutPanel topButtonsRow = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                AutoSize = false,
+                Margin = new Padding(0)
+            };
+
+            FlowLayoutPanel bottomButtonsRow = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                AutoSize = false,
+                Margin = new Padding(0)
+            };
+
+            _placePointButton.Width = 120;
+            _placePointButton.Height = 30;
+            _placePointButton.Text = "Placer point";
+            _placePointButton.Enabled = false;
+            _placePointButton.Margin = new Padding(0, 0, 8, 0);
+
+            _shootButton.Width = 90;
+            _shootButton.Height = 30;
+            _shootButton.Text = "Tirer";
+            _shootButton.Enabled = false;
+            _shootButton.Margin = new Padding(0);
+
             _endGameButton.Width = 180;
+            _endGameButton.Height = 30;
             _endGameButton.Text = "Terminer la partie";
             _endGameButton.Enabled = false;
+            _endGameButton.Margin = new Padding(0, 0, 8, 0);
 
-            _undoButton.Dock = DockStyle.Right;
             _undoButton.Width = 140;
+            _undoButton.Height = 30;
             _undoButton.Text = "Retour (Ctrl+Z)";
             _undoButton.Enabled = false;
+            _undoButton.Margin = new Padding(0);
 
-            _bottomPanel.Controls.Add(_endGameButton);
-            _bottomPanel.Controls.Add(_undoButton);
+            topButtonsRow.Controls.Add(_placePointButton);
+            topButtonsRow.Controls.Add(_shootButton);
+            bottomButtonsRow.Controls.Add(_undoButton);
+            bottomButtonsRow.Controls.Add(_endGameButton);
+
+            bottomLayout.Controls.Add(topButtonsRow, 0, 0);
+            bottomLayout.Controls.Add(bottomButtonsRow, 0, 1);
+            _bottomPanel.Controls.Add(bottomLayout);
             _boardHostPanel.Controls.Add(_board);
+            this.Controls.Add(_topPanel);
             this.Controls.Add(_boardHostPanel);
             this.Controls.Add(_bottomPanel);
             TerminalLogger.Action("GameBoard component created and added to form");
@@ -121,12 +187,38 @@ namespace GomokuGame.ui
         {
             // Ici on relie les événements UI aux handlers dédiés.
             _board.MouseClick += Board_MouseClick;
+            _placePointButton.Click += PlacePointButton_Click;
+            _shootButton.Click += ShootButton_Click;
             _endGameButton.Click += EndGameButton_Click;
             _undoButton.Click += UndoButton_Click;
             this.KeyPreview = true;
             this.KeyDown += Form1_KeyDown;
             this.Shown += Form1_Shown;
             this.Resize += Form1_Resize;
+        }
+
+        private void PlacePointButton_Click(object? sender, EventArgs e)
+        {
+            if (!_isGameInitialized || !_etatPartie.IsInProgress)
+            {
+                return;
+            }
+
+            _turnDetector.SetCurrentAction(TurnAction.PlacePoint);
+            ApplyActionSelectionUi();
+            TerminalLogger.Action($"Action button clicked: {_turnDetector.CurrentPlayer} selected PlacePoint");
+        }
+
+        private void ShootButton_Click(object? sender, EventArgs e)
+        {
+            if (!_isGameInitialized || !_etatPartie.IsInProgress)
+            {
+                return;
+            }
+
+            _turnDetector.SetCurrentAction(TurnAction.LaunchBomb);
+            ApplyActionSelectionUi();
+            TerminalLogger.Action($"Action button clicked: {_turnDetector.CurrentPlayer} selected LaunchBomb");
         }
 
         private void Form1_Resize(object? sender, EventArgs e)
@@ -262,7 +354,7 @@ namespace GomokuGame.ui
             _pendingBombRowOneBased = selectedRow;
             _board.SetSelectedBombRow(selectedRow);
             TerminalLogger.Action($"Bomb row selected: row={selectedRow}");
-            TurnActionAlert.ShowBombPowerInputHint(this, _turnDetector.CurrentPlayer, selectedRow);
+            UpdateTurnStatusText($"Tour de {_turnDetector.CurrentPlayer} - Ligne {selectedRow} choisie, appuie sur Ctrl + pavé numérique (1..9) pour tirer");
         }
 
         private void Form1_KeyDown(object? sender, KeyEventArgs e)
@@ -416,22 +508,8 @@ namespace GomokuGame.ui
                 return;
             }
 
-            TurnAction selectedAction = TurnActionAlert.ShowTurnChoice(this, _turnDetector.CurrentPlayer);
-            _turnDetector.SetCurrentAction(selectedAction);
-            TerminalLogger.Action($"Action prompt displayed for {_turnDetector.CurrentPlayer}");
-
-            if (selectedAction == TurnAction.LaunchBomb)
-            {
-                bool fromLeft = _turnDetector.CurrentPlayer == _turnDetector.Player1;
-                _pendingBombRowOneBased = null;
-                _board.EnableBombSelection(fromLeft);
-                TurnActionAlert.ShowBombRowSelectionHint(this, _turnDetector.CurrentPlayer, fromLeft);
-                TerminalLogger.Action($"Bomb selection enabled (fromLeft={fromLeft})");
-            }
-            else
-            {
-                _board.DisableBombSelection();
-            }
+            ApplyActionSelectionUi();
+            TerminalLogger.Action($"Turn UI refreshed for {_turnDetector.CurrentPlayer}");
         }
 
         private static int? TryMapPowerFromKey(Keys key, bool isCtrlPressed)
@@ -474,6 +552,8 @@ namespace GomokuGame.ui
             _etatPartie.EndGame("User clicked Terminer la partie");
             _pendingBombRowOneBased = null;
             _board.DisableBombSelection();
+            _placePointButton.Enabled = false;
+            _shootButton.Enabled = false;
             _endGameButton.Enabled = false;
             _undoButton.Enabled = false;
 
@@ -618,6 +698,8 @@ namespace GomokuGame.ui
             _etatPartie.StartGame();
             _pendingBombRowOneBased = null;
             _isGameInitialized = true;
+            _placePointButton.Enabled = true;
+            _shootButton.Enabled = true;
             _endGameButton.Enabled = true;
             _undoButton.Enabled = true;
 
@@ -743,6 +825,43 @@ namespace GomokuGame.ui
             }
 
             return turnNumber % 2 == 1 ? Color.Blue : Color.Red;
+        }
+
+        private void ApplyActionSelectionUi()
+        {
+            if (!_isGameInitialized || !_etatPartie.IsInProgress)
+            {
+                return;
+            }
+
+            _pendingBombRowOneBased = null;
+
+            bool isBombAction = _turnDetector.CurrentAction == TurnAction.LaunchBomb;
+            bool fromLeft = _turnDetector.CurrentPlayer == _turnDetector.Player1;
+
+            if (isBombAction)
+            {
+                _board.EnableBombSelection(fromLeft);
+                UpdateTurnStatusText($"Tour de {_turnDetector.CurrentPlayer} - Action: Tirer (choisis une ligne sur le canon)");
+            }
+            else
+            {
+                _board.DisableBombSelection();
+                UpdateTurnStatusText($"Tour de {_turnDetector.CurrentPlayer} - Action: Placer point");
+            }
+
+            _placePointButton.BackColor = isBombAction ? SystemColors.Control : Color.LightSkyBlue;
+            _shootButton.BackColor = isBombAction ? Color.LightSalmon : SystemColors.Control;
+        }
+
+        private void UpdateTurnStatusText(string text)
+        {
+            if (_turnStatusLabel is null)
+            {
+                return;
+            }
+
+            _turnStatusLabel.Text = text;
         }
     }
 }
