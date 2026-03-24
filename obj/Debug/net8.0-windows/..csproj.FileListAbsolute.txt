@@ -13,3 +13,9 @@ D:\Prog\Projet\GomokuGame\obj\Debug\net8.0-windows\..pdb
 D:\Prog\Projet\GomokuGame\obj\Debug\net8.0-windows\..genruntimeconfig.cache
 D:\Prog\Projet\GomokuGame\obj\Debug\net8.0-windows\ref\..dll
 D:\Prog\Projet\GomokuGame\obj\Debug\net8.0-windows\..sourcelink.json
+D:\Prog\Projet\GomokuGame\bin\Debug\net8.0-windows\Microsoft.Extensions.DependencyInjection.Abstractions.dll
+D:\Prog\Projet\GomokuGame\bin\Debug\net8.0-windows\Microsoft.Extensions.Logging.Abstractions.dll
+D:\Prog\Projet\GomokuGame\bin\Debug\net8.0-windows\Npgsql.dll
+D:\Prog\Projet\GomokuGame\bin\Debug\net8.0-windows\System.Diagnostics.DiagnosticSource.dll
+D:\Prog\Projet\GomokuGame\obj\Debug\net8.0-windows\..csproj.AssemblyReference.cache
+D:\Prog\Projet\GomokuGame\obj\Debug\net8.0-windows\..csproj.Up2Date

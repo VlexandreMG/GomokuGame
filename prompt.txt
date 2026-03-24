@@ -51,4 +51,4 @@ Qui est le vainqeur ? Et un bouton pour refaire une partie
 12 - Y a 3 trucs nouveaux qu'on va faire , la première , si une ligne vient d'être créé et que si l'on tire sur l'un de ces points ,
 la bombe n'aura aucun effet . 
 La deuxième , lorsqu'on envoie une bombe , on doit cliquer sur ctrl + nombre sur pavé numerique
-La troisième , dans data , j'aimerais que tu me fasse une classe qui se connecte à la base de données 
+La troisième , dans data , j'aimerais que tu me fasse une classe qui se connecte à la base de données  
