@@ -9,18 +9,20 @@ public sealed class GameSetupResult
 {
     public string Player1Name { get; }
     public string Player2Name { get; }
-    public int GridSize { get; }
+    public int GridWidth { get; }
+    public int GridHeight { get; }
     public bool IsLoadRequest { get; }
     public int? PartieIdToLoad { get; }
 
     /// <summary>
     /// Contient le résultat du menu de lancement: nouvelle partie ou demande de chargement.
     /// </summary>
-    public GameSetupResult(string player1Name, string player2Name, int gridSize, bool isLoadRequest = false, int? partieIdToLoad = null)
+    public GameSetupResult(string player1Name, string player2Name, int gridWidth, int gridHeight, bool isLoadRequest = false, int? partieIdToLoad = null)
     {
         Player1Name = player1Name;
         Player2Name = player2Name;
-        GridSize = gridSize;
+        GridWidth = gridWidth;
+        GridHeight = gridHeight;
         IsLoadRequest = isLoadRequest;
         PartieIdToLoad = partieIdToLoad;
     }
@@ -30,7 +32,7 @@ public sealed class GameSetupResult
     /// </summary>
     public static GameSetupResult ForLoad(int partieId)
     {
-        return new GameSetupResult(string.Empty, string.Empty, 0, true, partieId);
+        return new GameSetupResult(string.Empty, string.Empty, 0, 0, true, partieId);
     }
 }
 
@@ -50,7 +52,7 @@ public static class GameSetupMenu
         dialog.StartPosition = FormStartPosition.CenterParent;
         dialog.MinimizeBox = false;
         dialog.MaximizeBox = false;
-        dialog.ClientSize = new System.Drawing.Size(420, 260);
+        dialog.ClientSize = new System.Drawing.Size(420, 296);
 
         Label introLabel = new Label
         {
@@ -104,29 +106,48 @@ public static class GameSetupMenu
             Text = "Joueur 2"
         };
 
-        Label gridLabel = new Label
+        Label gridWidthLabel = new Label
         {
             Left = 16,
             Top = 160,
             Width = 130,
             Height = 24,
-            Text = "Taille grille"
+            Text = "Largeur grille"
         };
 
-        NumericUpDown gridInput = new NumericUpDown
+        NumericUpDown gridWidthInput = new NumericUpDown
         {
             Left = 150,
             Top = 158,
             Width = 254,
-            Minimum = 10,
+            Minimum = 5,
             Maximum = 25,
-            Value = 15
+            Value = 10
+        };
+
+        Label gridHeightLabel = new Label
+        {
+            Left = 16,
+            Top = 192,
+            Width = 130,
+            Height = 24,
+            Text = "Hauteur grille"
+        };
+
+        NumericUpDown gridHeightInput = new NumericUpDown
+        {
+            Left = 150,
+            Top = 190,
+            Width = 254,
+            Minimum = 5,
+            Maximum = 25,
+            Value = 10
         };
 
         Button okButton = new Button
         {
             Left = 248,
-            Top = 214,
+            Top = 250,
             Width = 75,
             Text = "Lancer",
             DialogResult = DialogResult.OK
@@ -135,7 +156,7 @@ public static class GameSetupMenu
         Button cancelButton = new Button
         {
             Left = 329,
-            Top = 214,
+            Top = 250,
             Width = 75,
             Text = "Annuler",
             DialogResult = DialogResult.Cancel
@@ -144,7 +165,7 @@ public static class GameSetupMenu
         Button loadButton = new Button
         {
             Left = 16,
-            Top = 214,
+            Top = 250,
             Width = 120,
             Text = "Charger partie"
         };
@@ -167,8 +188,10 @@ public static class GameSetupMenu
         dialog.Controls.Add(p1Input);
         dialog.Controls.Add(p2Label);
         dialog.Controls.Add(p2Input);
-        dialog.Controls.Add(gridLabel);
-        dialog.Controls.Add(gridInput);
+        dialog.Controls.Add(gridWidthLabel);
+        dialog.Controls.Add(gridWidthInput);
+        dialog.Controls.Add(gridHeightLabel);
+        dialog.Controls.Add(gridHeightInput);
         dialog.Controls.Add(okButton);
         dialog.Controls.Add(cancelButton);
         dialog.Controls.Add(loadButton);
@@ -189,9 +212,10 @@ public static class GameSetupMenu
 
         string p1 = string.IsNullOrWhiteSpace(p1Input.Text) ? "Joueur 1" : p1Input.Text.Trim();
         string p2 = string.IsNullOrWhiteSpace(p2Input.Text) ? "Joueur 2" : p2Input.Text.Trim();
-        int gridSize = (int)gridInput.Value;
+        int gridWidth = (int)gridWidthInput.Value;
+        int gridHeight = (int)gridHeightInput.Value;
 
-        result = new GameSetupResult(p1, p2, gridSize);
+        result = new GameSetupResult(p1, p2, gridWidth, gridHeight);
         return true;
     }
 

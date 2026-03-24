@@ -11,7 +11,8 @@ namespace GomokuGame.ui.organisms
     public class GameBoard : BaseComponent
     {
         // Paramètres visuels du plateau (taille grille, marges, canons).
-        public int GridSize { get; set; } = 15;
+        public int GridColumns { get; set; } = 10;
+        public int GridRows { get; set; } = 10;
         public int CellSize { get; set; } = 40;
         public int BoardMargin { get; set; } = 50;
         public int CannonOffset { get; set; } = 26;
@@ -46,7 +47,7 @@ namespace GomokuGame.ui.organisms
         protected override void ApplyDefaultStyles()
         {
             this.DoubleBuffered = true; // Pour éviter les clignotements
-            this.BackColor = Color.NavajoWhite; // Couleur "plateau de jeu"
+            this.BackColor = Color.White; // Plateau blanc
         }
 
         /// <summary>
@@ -88,14 +89,18 @@ namespace GomokuGame.ui.organisms
         {
             using (Pen pen = new Pen(Color.Black, 1))
             {
-                for (int i = 0; i < GridSize; i++)
+                for (int row = 0; row < GridRows; row++)
                 {
                     // Lignes horizontales
-                    g.DrawLine(pen, BoardMargin, BoardMargin + (i * CellSize), 
-                                    BoardMargin + ((GridSize - 1) * CellSize), BoardMargin + (i * CellSize));
+                    g.DrawLine(pen, BoardMargin, BoardMargin + (row * CellSize),
+                                    BoardMargin + ((GridColumns - 1) * CellSize), BoardMargin + (row * CellSize));
+                }
+
+                for (int column = 0; column < GridColumns; column++)
+                {
                     // Lignes verticales
-                    g.DrawLine(pen, BoardMargin + (i * CellSize), BoardMargin, 
-                                    BoardMargin + (i * CellSize), BoardMargin + ((GridSize - 1) * CellSize));
+                    g.DrawLine(pen, BoardMargin + (column * CellSize), BoardMargin,
+                                    BoardMargin + (column * CellSize), BoardMargin + ((GridRows - 1) * CellSize));
                 }
             }
         }
@@ -108,17 +113,22 @@ namespace GomokuGame.ui.organisms
             using Font labelFont = new Font("Segoe UI", 9, FontStyle.Bold);
             using Brush labelBrush = new SolidBrush(Color.Black);
 
-            for (int i = 0; i < GridSize; i++)
+            for (int row = 0; row < GridRows; row++)
             {
-                string label = (i + 1).ToString();
+                string label = (row + 1).ToString();
                 SizeF rowTextSize = g.MeasureString(label, labelFont);
-                float rowY = BoardMargin + (i * CellSize) - (rowTextSize.Height / 2f);
+                float rowY = BoardMargin + (row * CellSize) - (rowTextSize.Height / 2f);
 
                 g.DrawString(label, labelFont, labelBrush, BoardMargin - 36, rowY);
-                g.DrawString(label, labelFont, labelBrush, BoardMargin + ((GridSize - 1) * CellSize) + 20, rowY);
+                g.DrawString(label, labelFont, labelBrush, BoardMargin + ((GridColumns - 1) * CellSize) + 20, rowY);
+            }
+
+            for (int column = 0; column < GridColumns; column++)
+            {
+                string label = (column + 1).ToString();
 
                 SizeF colTextSize = g.MeasureString(label, labelFont);
-                float colX = BoardMargin + (i * CellSize) - (colTextSize.Width / 2f);
+                float colX = BoardMargin + (column * CellSize) - (colTextSize.Width / 2f);
                 g.DrawString(label, labelFont, labelBrush, colX, BoardMargin - 32);
             }
         }
@@ -189,7 +199,7 @@ namespace GomokuGame.ui.organisms
                 return false;
             }
 
-            for (int rowIndex = 0; rowIndex < GridSize; rowIndex++)
+            for (int rowIndex = 0; rowIndex < GridRows; rowIndex++)
             {
                 Rectangle hitBox = BuildCannonHitBox(rowIndex, fromLeft);
                 if (hitBox.Contains(pixelX, pixelY))
@@ -216,7 +226,7 @@ namespace GomokuGame.ui.organisms
             using Brush activeBrush = new SolidBrush(Color.OrangeRed);
             using Brush normalBrush = new SolidBrush(Color.Gray);
 
-            for (int rowIndex = 0; rowIndex < GridSize; rowIndex++)
+            for (int rowIndex = 0; rowIndex < GridRows; rowIndex++)
             {
                 int rowOneBased = rowIndex + 1;
                 bool isSelected = SelectedBombRowOneBased.HasValue && SelectedBombRowOneBased.Value == rowOneBased;
@@ -236,7 +246,7 @@ namespace GomokuGame.ui.organisms
             int centerY = BoardMargin + (rowIndex * CellSize);
             int centerX = fromLeft
                 ? BoardMargin - CannonOffset
-                : BoardMargin + ((GridSize - 1) * CellSize) + CannonOffset;
+                : BoardMargin + ((GridColumns - 1) * CellSize) + CannonOffset;
 
             return new Rectangle(
                 centerX - (CannonWidth / 2),

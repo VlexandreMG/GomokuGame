@@ -41,5 +41,5 @@ G:\S4\Porjet Tahina\GomokuGame\obj\Debug\net8.0-windows\refint\..dll
 G:\S4\Porjet Tahina\GomokuGame\obj\Debug\net8.0-windows\..pdb
 G:\S4\Porjet Tahina\GomokuGame\obj\Debug\net8.0-windows\..genruntimeconfig.cache
 G:\S4\Porjet Tahina\GomokuGame\obj\Debug\net8.0-windows\ref\..dll
-G:\S4\Porjet Tahina\GomokuGame\bin\Debug\net8.0-windows\..exe
 >>>>>>> d1b9711d20601f3c9440bf845627e4fcc92d7f08
+G:\S4\Porjet Tahina\GomokuGame\bin\Debug\net8.0-windows\..exe

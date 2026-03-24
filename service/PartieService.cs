@@ -22,11 +22,11 @@ public sealed class PartieService
     /// <summary>
     /// Crée une nouvelle partie en base avec les paramètres de la configuration initiale.
     /// </summary>
-    public int TryCreatePartie(string player1, string player2, int gridSize)
+    public int TryCreatePartie(string player1, string player2, int gridWidth, int gridHeight)
     {
         try
         {
-            PartieModel partie = BuildPartieModel(player1, player2, gridSize);
+            PartieModel partie = BuildPartieModel(player1, player2, gridWidth, gridHeight);
 
             int id = _repository.Insert(partie);
             TerminalLogger.Action($"Partie saved in database with id={id}");
@@ -77,13 +77,15 @@ public sealed class PartieService
     /// <summary>
     /// Construit le modèle de persistance de partie à insérer en base.
     /// </summary>
-    private static PartieModel BuildPartieModel(string player1, string player2, int gridSize)
+    private static PartieModel BuildPartieModel(string player1, string player2, int gridWidth, int gridHeight)
     {
+        int persistedGridSize = Math.Max(gridWidth, gridHeight);
+
         return new PartieModel
         {
             Player1 = player1,
             Player2 = player2,
-            GridSize = gridSize,
+            GridSize = persistedGridSize,
             DateCreation = DateTime.UtcNow
         };
     }

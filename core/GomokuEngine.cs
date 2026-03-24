@@ -17,16 +17,18 @@ public sealed class GomokuEngine
         (1, -1)
     };
 
-    public int GridSize { get; }
+    public int GridWidth { get; }
+    public int GridHeight { get; }
     public IReadOnlyList<GameStone> Stones => _stones;
 
     /// <summary>
     /// Initialise le moteur avec une taille de grille fixe.
     /// </summary>
-    public GomokuEngine(int gridSize)
+    public GomokuEngine(int gridWidth, int gridHeight)
     {
-        GridSize = gridSize;
-        TerminalLogger.Action($"Engine created with grid size {GridSize}");
+        GridWidth = gridWidth;
+        GridHeight = gridHeight;
+        TerminalLogger.Action($"Engine created with grid size {GridWidth}x{GridHeight}");
     }
 
     /// <summary>
@@ -76,9 +78,9 @@ public sealed class GomokuEngine
 
         TerminalLogger.Action($"TryLaunchBomb called: fromLeft={fromLeft}, line={lineOneBased}, power={power}, shooterColor={shooterColor.Name}");
 
-        if (lineOneBased < 1 || lineOneBased > GridSize)
+        if (lineOneBased < 1 || lineOneBased > GridHeight)
         {
-            TerminalLogger.Action($"Bomb rejected: line {lineOneBased} is out of range 1..{GridSize}");
+            TerminalLogger.Action($"Bomb rejected: line {lineOneBased} is out of range 1..{GridHeight}");
             return false;
         }
 
@@ -89,7 +91,7 @@ public sealed class GomokuEngine
         }
 
         // Mapping puissance (1..9) -> colonne cible via règle de trois.
-        double mappedExact = (power * (double)GridSize) / 9d;
+        double mappedExact = (power * (double)GridWidth) / 9d;
         int mappedOneBased = (int)Math.Floor(mappedExact);
         if (mappedOneBased < 1)
         {
@@ -310,7 +312,7 @@ public sealed class GomokuEngine
     /// </summary>
     private bool IsInsideBoard(int x, int y)
     {
-        return x >= 0 && x < GridSize && y >= 0 && y < GridSize;
+        return x >= 0 && x < GridWidth && y >= 0 && y < GridHeight;
     }
 
     /// <summary>
@@ -332,7 +334,7 @@ public sealed class GomokuEngine
     /// </summary>
     private Point ResolveBombTarget(bool fromLeft, int lineOneBased, int mappedOneBased)
     {
-        int targetX = fromLeft ? mappedOneBased - 1 : GridSize - mappedOneBased;
+        int targetX = fromLeft ? mappedOneBased - 1 : GridWidth - mappedOneBased;
         int targetY = lineOneBased - 1;
         return new Point(targetX, targetY);
     }

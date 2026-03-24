@@ -35,7 +35,8 @@ namespace GomokuGame.ui
         // ---------- Métadonnées de la partie ----------
         private string _player1Name = "Joueur 1";
         private string _player2Name = "Joueur 2";
-        private int _gridSize = 15;
+        private int _gridWidth = 10;
+        private int _gridHeight = 10;
         private int _player1Score;
         private int _player2Score;
         private int _currentPartieId;
@@ -178,7 +179,7 @@ namespace GomokuGame.ui
             TerminalLogger.Action($"Translated to grid position=({x},{y})");
 
             // Vérifier qu'on est bien sur une intersection de la grille
-            if (x >= 0 && x < _board.GridSize && y >= 0 && y < _board.GridSize)
+            if (x >= 0 && x < _board.GridColumns && y >= 0 && y < _board.GridRows)
             {
                 // La couleur du coup vient du joueur courant.
                 Color currentPlayerColor = _turnDetector.CurrentPlayer == _turnDetector.Player1 ? Color.Blue : Color.Red;
@@ -494,18 +495,18 @@ namespace GomokuGame.ui
                 return;
             }
 
-            StartConfiguredGame(setup.Player1Name, setup.Player2Name, setup.GridSize);
+            StartConfiguredGame(setup.Player1Name, setup.Player2Name, setup.GridWidth, setup.GridHeight);
         }
 
-        private void StartConfiguredGame(string player1Name, string player2Name, int gridSize)
+        private void StartConfiguredGame(string player1Name, string player2Name, int gridWidth, int gridHeight)
         {
             // Nouvelle partie: on crée l'enregistrement puis on reconstruit un état vide.
-            ConfigurePartieMetadata(player1Name, player2Name, gridSize, 0);
+            ConfigurePartieMetadata(player1Name, player2Name, gridWidth, gridHeight, 0);
             _actionHistory.Clear();
-            _currentPartieId = _partieService.TryCreatePartie(player1Name, player2Name, gridSize);
+            _currentPartieId = _partieService.TryCreatePartie(player1Name, player2Name, gridWidth, gridHeight);
             RebuildStateFromHistory(false);
 
-            TerminalLogger.Action($"Game setup complete: P1={player1Name} (Blue), P2={player2Name} (Red), grid={gridSize}, partieId={_currentPartieId}");
+            TerminalLogger.Action($"Game setup complete: P1={player1Name} (Blue), P2={player2Name} (Red), grid={gridWidth}x{gridHeight}, partieId={_currentPartieId}");
             PromptCurrentTurnAction();
         }
 
@@ -519,7 +520,7 @@ namespace GomokuGame.ui
                 return;
             }
 
-            ConfigurePartieMetadata(partie.Player1, partie.Player2, partie.GridSize, partie.Id);
+            ConfigurePartieMetadata(partie.Player1, partie.Player2, partie.GridSize, partie.GridSize, partie.Id);
 
             var actions = _actionService.TryGetByPartieId(partieId);
             LoadActionHistory(actions);
@@ -593,12 +594,13 @@ namespace GomokuGame.ui
             _awardedLineSignatures.Clear();
             _displayedLineSignatures.Clear();
 
-            _board.GridSize = _gridSize;
+            _board.GridColumns = _gridWidth;
+            _board.GridRows = _gridHeight;
             _board.PlacedPoints.Clear();
             _board.WinningLines.Clear();
             _board.DisableBombSelection();
 
-            _engine = new GomokuEngine(_gridSize);
+            _engine = new GomokuEngine(_gridWidth, _gridHeight);
             _turnDetector = new TurnDetector(_player1Name, _player2Name);
             _etatPartie = new EtatPartie();
             _etatPartie.StartGame();
@@ -651,12 +653,13 @@ namespace GomokuGame.ui
             }
         }
 
-        private void ConfigurePartieMetadata(string player1Name, string player2Name, int gridSize, int partieId)
+        private void ConfigurePartieMetadata(string player1Name, string player2Name, int gridWidth, int gridHeight, int partieId)
         {
             // Cette méthode isole les affectations de métadonnées de partie.
             _player1Name = player1Name;
             _player2Name = player2Name;
-            _gridSize = gridSize;
+            _gridWidth = gridWidth;
+            _gridHeight = gridHeight;
             _turnNumber = 1;
             _currentPartieId = partieId;
         }
