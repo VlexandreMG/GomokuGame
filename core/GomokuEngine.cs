@@ -159,10 +159,12 @@ public sealed class GomokuEngine
                     continue;
                 }
 
-                int runLength = 1;
                 int x = stone.X;
                 int y = stone.Y;
-                Point end = new Point(stone.X, stone.Y);
+                var runPoints = new List<Point>
+                {
+                    new Point(stone.X, stone.Y)
+                };
 
                 while (true)
                 {
@@ -173,13 +175,17 @@ public sealed class GomokuEngine
                         break;
                     }
 
-                    runLength++;
-                    end = new Point(x, y);
+                    runPoints.Add(new Point(x, y));
                 }
 
-                if (runLength == 5)
+                if (runPoints.Count < 5)
                 {
-                    lines.Add(new WinningLine(new Point(stone.X, stone.Y), end, stone.Color));
+                    continue;
+                }
+
+                for (int startIndex = 0; startIndex + 4 < runPoints.Count; startIndex += 5)
+                {
+                    lines.Add(new WinningLine(runPoints[startIndex], runPoints[startIndex + 4], stone.Color));
                 }
             }
         }
@@ -193,55 +199,54 @@ public sealed class GomokuEngine
 
         foreach (var (dx, dy) in _scanDirections)
         {
-            int forwardCount = CountAlignedStones(originStone, dx, dy, out Point forwardEnd);
-            int backwardCount = CountAlignedStones(originStone, -dx, -dy, out Point backwardEnd);
-            int totalAligned = 1 + forwardCount + backwardCount;
-            TerminalLogger.Action($"Direction ({dx},{dy}) -> backward={backwardCount}, forward={forwardCount}, total={totalAligned}");
+            List<Point> alignedRun = CollectAlignedRunPoints(originStone, dx, dy);
+            TerminalLogger.Action($"Direction ({dx},{dy}) -> alignedRun={alignedRun.Count}");
 
-            // Une ligne est valide uniquement si elle contient exactement 5 points alignes.
-            if (totalAligned == 5)
+            if (alignedRun.Count < 5)
             {
-                lines.Add(new WinningLine(backwardEnd, forwardEnd, originStone.Color));
-                TerminalLogger.Action($"Exact line found: start=({backwardEnd.X},{backwardEnd.Y}), end=({forwardEnd.X},{forwardEnd.Y}), color={originStone.Color.Name}");
+                continue;
+            }
+
+            for (int startIndex = 0; startIndex + 4 < alignedRun.Count; startIndex += 5)
+            {
+                Point start = alignedRun[startIndex];
+                Point end = alignedRun[startIndex + 4];
+                lines.Add(new WinningLine(start, end, originStone.Color));
+                TerminalLogger.Action($"5-block line found: start=({start.X},{start.Y}), end=({end.X},{end.Y}), color={originStone.Color.Name}");
             }
         }
 
         return lines;
     }
 
-    private int CountAlignedStones(GameStone originStone, int dx, int dy, out Point furthestPoint)
+    private List<Point> CollectAlignedRunPoints(GameStone originStone, int dx, int dy)
     {
-        furthestPoint = new Point(originStone.X, originStone.Y);
-        int count = 0;
-        int x = originStone.X;
-        int y = originStone.Y;
+        var runPoints = new List<Point>();
+        int startX = originStone.X;
+        int startY = originStone.Y;
+
+        while (HasSameColorStoneAt(startX - dx, startY - dy, originStone.Color))
+        {
+            startX -= dx;
+            startY -= dy;
+        }
+
+        int x = startX;
+        int y = startY;
 
         while (true)
         {
+            if (!HasSameColorStoneAt(x, y, originStone.Color))
+            {
+                break;
+            }
+
+            runPoints.Add(new Point(x, y));
             x += dx;
             y += dy;
-
-            if (!IsInsideBoard(x, y))
-            {
-                break;
-            }
-
-            var candidatePosition = new Point(x, y);
-            if (!_stonesByPosition.TryGetValue(candidatePosition, out GameStone? candidateStone))
-            {
-                break;
-            }
-
-            if (candidateStone.Color != originStone.Color)
-            {
-                break;
-            }
-
-            count++;
-            furthestPoint = candidatePosition;
         }
 
-        return count;
+        return runPoints;
     }
 
     private bool IsInsideBoard(int x, int y)

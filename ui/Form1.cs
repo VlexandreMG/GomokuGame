@@ -26,6 +26,7 @@ namespace GomokuGame.ui
         private int _player1Score;
         private int _player2Score;
         private readonly HashSet<string> _awardedLineSignatures = new HashSet<string>();
+        private readonly HashSet<string> _displayedLineSignatures = new HashSet<string>();
 
         public Form1()
         {
@@ -137,7 +138,7 @@ namespace GomokuGame.ui
             // Vérifier qu'on est bien sur une intersection de la grille
             if (x >= 0 && x < _board.GridSize && y >= 0 && y < _board.GridSize)
             {
-                if (!_engine.TryPlaceStone(x, y, out GameStone? placedStone, out IReadOnlyList<WinningLine> _) || placedStone is null)
+                if (!_engine.TryPlaceStone(x, y, out GameStone? placedStone, out IReadOnlyList<WinningLine> newLines) || placedStone is null)
                 {
                     TerminalLogger.Action("Move ignored by engine");
                     return;
@@ -147,8 +148,7 @@ namespace GomokuGame.ui
                 _board.PlacedPoints.Add(placedPoint);
                 TerminalLogger.Action($"UI point added at ({placedStone.X},{placedStone.Y}) with color={placedStone.Color.Name}");
 
-                IReadOnlyList<WinningLine> lines = _engine.GetWinningLinesExactFive();
-                SyncWinningLines(lines);
+                SyncWinningLines(newLines);
 
                 _board.Invalidate(); // Force à redessiner le plateau (OnPaint)
                 TerminalLogger.Action("Board invalidated for repaint");
@@ -263,10 +263,14 @@ namespace GomokuGame.ui
 
         private void SyncWinningLines(IReadOnlyList<WinningLine> lines)
         {
-            _board.WinningLines.Clear();
             foreach (WinningLine line in lines)
             {
-                _board.WinningLines.Add((line.Start, line.End, line.Color));
+                string signature = BuildLineSignature(line);
+                if (_displayedLineSignatures.Add(signature))
+                {
+                    _board.WinningLines.Add((line.Start, line.End, line.Color));
+                    TerminalLogger.Action($"Winning line persisted on board: {signature}");
+                }
             }
 
             UpdateScoresFromLines(lines);
@@ -404,6 +408,7 @@ namespace GomokuGame.ui
             _player1Score = 0;
             _player2Score = 0;
             _awardedLineSignatures.Clear();
+            _displayedLineSignatures.Clear();
 
             _board.GridSize = gridSize;
             _board.PlacedPoints.Clear();
