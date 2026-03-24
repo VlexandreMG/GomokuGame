@@ -1,4 +1,5 @@
 using System.Windows.Forms;
+using GomokuGame.data;
 
 namespace GomokuGame.ui.atoms;
 
@@ -119,6 +120,16 @@ public static class GameSetupMenu
             DialogResult = DialogResult.Cancel
         };
 
+        Button loadButton = new Button
+        {
+            Left = 16,
+            Top = 214,
+            Width = 120,
+            Text = "Charger partie"
+        };
+
+        loadButton.Click += (_, _) => ShowSavedGamesList(owner);
+
         dialog.Controls.Add(introLabel);
         dialog.Controls.Add(colorLabel);
         dialog.Controls.Add(p1Label);
@@ -129,6 +140,7 @@ public static class GameSetupMenu
         dialog.Controls.Add(gridInput);
         dialog.Controls.Add(okButton);
         dialog.Controls.Add(cancelButton);
+        dialog.Controls.Add(loadButton);
 
         dialog.AcceptButton = okButton;
         dialog.CancelButton = cancelButton;
@@ -144,5 +156,66 @@ public static class GameSetupMenu
 
         result = new GameSetupResult(p1, p2, gridSize);
         return true;
+    }
+
+    private static void ShowSavedGamesList(IWin32Window? owner)
+    {
+        DatabaseManager databaseManager = new DatabaseManager();
+        var savedGames = databaseManager.GetSavedGames();
+
+        using Form listDialog = new Form();
+        listDialog.Text = "Parties sauvegardees";
+        listDialog.FormBorderStyle = FormBorderStyle.FixedDialog;
+        listDialog.StartPosition = FormStartPosition.CenterParent;
+        listDialog.MinimizeBox = false;
+        listDialog.MaximizeBox = false;
+        listDialog.ClientSize = new System.Drawing.Size(380, 300);
+
+        Label infoLabel = new Label
+        {
+            Left = 12,
+            Top = 10,
+            Width = 356,
+            Height = 24,
+            Text = "Liste des parties disponibles"
+        };
+
+        ListBox gamesList = new ListBox
+        {
+            Left = 12,
+            Top = 36,
+            Width = 356,
+            Height = 220
+        };
+
+        if (savedGames.Count == 0)
+        {
+            gamesList.Items.Add("Aucune partie sauvegardee");
+            gamesList.Enabled = false;
+        }
+        else
+        {
+            foreach (string game in savedGames)
+            {
+                gamesList.Items.Add(game);
+            }
+        }
+
+        Button closeButton = new Button
+        {
+            Left = 293,
+            Top = 264,
+            Width = 75,
+            Text = "Fermer",
+            DialogResult = DialogResult.OK
+        };
+
+        listDialog.Controls.Add(infoLabel);
+        listDialog.Controls.Add(gamesList);
+        listDialog.Controls.Add(closeButton);
+        listDialog.AcceptButton = closeButton;
+        listDialog.CancelButton = closeButton;
+
+        listDialog.ShowDialog(owner);
     }
 }
