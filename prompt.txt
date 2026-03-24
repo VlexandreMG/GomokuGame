@@ -78,3 +78,6 @@ Fais ça de manière à ne pas cassser le code mais de manière à ce que cela s
 
 17 - maintenant , on va faire correspondre la base de données à la logique de chargement de partie , c'est à dire , que vue qu'on a une partie sauvegarder dans la base de données 
 cette partie devrait être disponible dans la liste des chargements et lorsqu'on clique dessus , on retourne à la partie correspondante (respecter le tour , le nombre de points , les points posés )
+
+18 - maintenant , on va faire un bouton de retour : cela consiste à revenir sur son dernier tour comme pour un ctrl + z 
+c'est à dire , que le tour de l'adversaire ainsi que mon tour précedent sont annulés et le tour me revient (c'est aussi valable pour les tirs au canons)

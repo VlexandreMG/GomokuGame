@@ -1,6 +1,7 @@
 using GomokuGame.core;
 using GomokuGame.data;
 using GomokuGame.model;
+using Npgsql;
 using System;
 using System.Collections.Generic;
 
@@ -39,6 +40,40 @@ public sealed class ActionService
         {
             TerminalLogger.Action($"Action list unavailable: {ex.Message}");
             return Array.Empty<ActionModel>();
+        }
+    }
+
+    public bool TryDeleteLastActions(int partieId, int count)
+    {
+        if (partieId <= 0 || count <= 0)
+        {
+            return true;
+        }
+
+        try
+        {
+            const string sql = @"
+DELETE FROM actions
+WHERE ctid IN (
+    SELECT ctid
+    FROM actions
+    WHERE partie_id = @partieId
+    ORDER BY tour_numero DESC, id DESC
+    LIMIT @count
+);";
+
+            int deletedRows = _repository.ExecuteNonQuery(
+                sql,
+                new NpgsqlParameter("@partieId", partieId),
+                new NpgsqlParameter("@count", count));
+
+            TerminalLogger.Action($"Undo persisted in database: deletedActions={deletedRows}, partie={partieId}");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            TerminalLogger.Action($"Undo persistence skipped (db unavailable): {ex.Message}");
+            return false;
         }
     }
 

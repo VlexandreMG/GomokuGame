@@ -78,6 +78,20 @@ public sealed class GenericRepository
         return Convert.ToInt32(scalar, CultureInfo.InvariantCulture);
     }
 
+    public int ExecuteNonQuery(string sql, params NpgsqlParameter[] parameters)
+    {
+        using var conn = new NpgsqlConnection(_connectionString);
+        conn.Open();
+
+        using var cmd = new NpgsqlCommand(sql, conn);
+        if (parameters.Length > 0)
+        {
+            cmd.Parameters.AddRange(parameters);
+        }
+
+        return cmd.ExecuteNonQuery();
+    }
+
     private IReadOnlyList<T> ExecuteQuery<T>(string sql, params NpgsqlParameter[] parameters) where T : new()
     {
         var results = new List<T>();

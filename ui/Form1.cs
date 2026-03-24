@@ -6,6 +6,7 @@ using System.Windows.Forms;
 using GomokuGame.core;
 using GomokuGame.core.events;
 using GomokuGame.data;
+using GomokuGame.model;
 using GomokuGame.service;
 using GomokuGame.ui.organisms;
 using GomokuGame.ui.atoms;
@@ -17,6 +18,7 @@ namespace GomokuGame.ui
         private GameBoard _board = null!;
         private Panel _bottomPanel = null!;
         private Button _endGameButton = null!;
+        private Button _undoButton = null!;
         private GomokuEngine _engine = null!;
         private TurnDetector _turnDetector = null!;
         private EtatPartie _etatPartie = null!;
@@ -31,6 +33,7 @@ namespace GomokuGame.ui
         private int _turnNumber = 1;
         private PartieService _partieService = null!;
         private ActionService _actionService = null!;
+        private readonly List<ActionModel> _actionHistory = new List<ActionModel>();
         private readonly HashSet<string> _awardedLineSignatures = new HashSet<string>();
         private readonly HashSet<string> _displayedLineSignatures = new HashSet<string>();
 
@@ -56,6 +59,7 @@ namespace GomokuGame.ui
             _board = new GameBoard();
             _bottomPanel = new Panel();
             _endGameButton = new Button();
+            _undoButton = new Button();
 
             _bottomPanel.Dock = DockStyle.Bottom;
             _bottomPanel.Height = 56;
@@ -66,7 +70,13 @@ namespace GomokuGame.ui
             _endGameButton.Text = "Terminer la partie";
             _endGameButton.Enabled = false;
 
+            _undoButton.Dock = DockStyle.Right;
+            _undoButton.Width = 140;
+            _undoButton.Text = "Retour (Ctrl+Z)";
+            _undoButton.Enabled = false;
+
             _bottomPanel.Controls.Add(_endGameButton);
+            _bottomPanel.Controls.Add(_undoButton);
             this.Controls.Add(_board);
             this.Controls.Add(_bottomPanel);
             TerminalLogger.Action("GameBoard component created and added to form");
@@ -87,6 +97,7 @@ namespace GomokuGame.ui
         {
             _board.MouseClick += Board_MouseClick; // Gérer le clic sur le plateau
             _endGameButton.Click += EndGameButton_Click;
+            _undoButton.Click += UndoButton_Click;
             this.KeyPreview = true;
             this.KeyDown += Form1_KeyDown;
             this.Shown += Form1_Shown;
@@ -168,6 +179,8 @@ namespace GomokuGame.ui
                     placedStone.Y,
                     _turnNumber);
 
+                AddActionToHistory("POINT", _turnDetector.CurrentPlayer, placedStone.X, placedStone.Y, _turnNumber);
+
                 _board.Invalidate(); // Force à redessiner le plateau (OnPaint)
                 TerminalLogger.Action("Board invalidated for repaint");
                 MoveToNextTurn();
@@ -227,6 +240,14 @@ namespace GomokuGame.ui
                 return;
             }
 
+            if (e.Control && e.KeyCode == Keys.Z)
+            {
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                UndoLastRound();
+                return;
+            }
+
             if (_turnDetector.CurrentAction != TurnAction.LaunchBomb || !_pendingBombRowOneBased.HasValue)
             {
                 return;
@@ -272,6 +293,8 @@ namespace GomokuGame.ui
                 targetCell.X,
                 targetCell.Y,
                 _turnNumber);
+
+            AddActionToHistory("BOMBE", _turnDetector.CurrentPlayer, targetCell.X, targetCell.Y, _turnNumber);
 
             _board.Invalidate();
             TerminalLogger.Action("Board synchronized after bomb action");
@@ -406,6 +429,7 @@ namespace GomokuGame.ui
             _pendingBombRowOneBased = null;
             _board.DisableBombSelection();
             _endGameButton.Enabled = false;
+            _undoButton.Enabled = false;
 
             bool replayRequested = GameResultAlert.ShowResultAndAskReplay(
                 this,
@@ -445,29 +469,13 @@ namespace GomokuGame.ui
             _player2Name = player2Name;
             _gridSize = gridSize;
 
-            _player1Score = 0;
-            _player2Score = 0;
             _turnNumber = 1;
             _currentPartieId = 0;
-            _awardedLineSignatures.Clear();
-            _displayedLineSignatures.Clear();
-
-            _board.GridSize = gridSize;
-            _board.PlacedPoints.Clear();
-            _board.WinningLines.Clear();
-            _board.DisableBombSelection();
-
-            _engine = new GomokuEngine(gridSize);
-            _turnDetector = new TurnDetector(player1Name, player2Name);
-            _etatPartie = new EtatPartie();
-            _etatPartie.StartGame();
+            _actionHistory.Clear();
             _currentPartieId = _partieService.TryCreatePartie(player1Name, player2Name, gridSize);
-            _pendingBombRowOneBased = null;
-            _isGameInitialized = true;
-            _endGameButton.Enabled = true;
+            RebuildStateFromHistory(false);
 
             TerminalLogger.Action($"Game setup complete: P1={player1Name} (Blue), P2={player2Name} (Red), grid={gridSize}, partieId={_currentPartieId}");
-            _board.Invalidate();
             PromptCurrentTurnAction();
         }
 
@@ -484,10 +492,80 @@ namespace GomokuGame.ui
             _player2Name = partie.Player2;
             _gridSize = partie.GridSize;
 
+            _currentPartieId = partie.Id;
+
+            var actions = _actionService.TryGetByPartieId(partieId);
+            _actionHistory.Clear();
+            _actionHistory.AddRange(actions.Select(a => new ActionModel
+            {
+                Id = a.Id,
+                PartieId = a.PartieId,
+                PlayerName = a.PlayerName,
+                X = a.X,
+                Y = a.Y,
+                TourNumero = a.TourNumero,
+                TypeAction = a.TypeAction
+            }));
+
+            RebuildStateFromHistory(false);
+
+            TerminalLogger.Action($"Saved game loaded: partieId={partie.Id}, actions={actions.Count}, nextTurn={_turnNumber}, currentPlayer={_turnDetector.CurrentPlayer}");
+            PromptCurrentTurnAction();
+        }
+
+        private void UndoButton_Click(object? sender, EventArgs e)
+        {
+            UndoLastRound();
+        }
+
+        private void UndoLastRound()
+        {
+            if (!_isGameInitialized || !_etatPartie.IsInProgress)
+            {
+                TerminalLogger.Action("Undo ignored: game not ready");
+                return;
+            }
+
+            if (_actionHistory.Count < 2)
+            {
+                MessageBox.Show(this, "Il faut au moins 2 tours pour faire un retour.", "Retour", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                TerminalLogger.Action("Undo ignored: not enough actions in history");
+                return;
+            }
+
+            _pendingBombRowOneBased = null;
+            _board.DisableBombSelection();
+
+            bool dbUndoOk = _actionService.TryDeleteLastActions(_currentPartieId, 2);
+            if (!dbUndoOk)
+            {
+                TerminalLogger.Action("Undo warning: database history not updated, using local history only");
+            }
+
+            _actionHistory.RemoveRange(_actionHistory.Count - 2, 2);
+            RebuildStateFromHistory(false);
+
+            TerminalLogger.Action($"Undo applied: 2 actions removed, remaining={_actionHistory.Count}, currentPlayer={_turnDetector.CurrentPlayer}");
+            PromptCurrentTurnAction();
+        }
+
+        private void AddActionToHistory(string type, string playerName, int x, int y, int tourNumero)
+        {
+            _actionHistory.Add(new ActionModel
+            {
+                PartieId = _currentPartieId,
+                PlayerName = playerName,
+                X = x,
+                Y = y,
+                TourNumero = tourNumero,
+                TypeAction = type
+            });
+        }
+
+        private void RebuildStateFromHistory(bool showActionPrompt)
+        {
             _player1Score = 0;
             _player2Score = 0;
-            _turnNumber = 1;
-            _currentPartieId = partie.Id;
             _awardedLineSignatures.Clear();
             _displayedLineSignatures.Clear();
 
@@ -503,9 +581,9 @@ namespace GomokuGame.ui
             _pendingBombRowOneBased = null;
             _isGameInitialized = true;
             _endGameButton.Enabled = true;
+            _undoButton.Enabled = true;
 
-            var actions = _actionService.TryGetByPartieId(partieId);
-            foreach (var action in actions)
+            foreach (var action in _actionHistory.OrderBy(a => a.TourNumero).ThenBy(a => a.Id))
             {
                 Color actorColor = ResolvePlayerColor(action.PlayerName, action.TourNumero);
 
@@ -527,10 +605,10 @@ namespace GomokuGame.ui
 
             SyncPointsFromEngine();
 
-            _turnNumber = actions.Count == 0 ? 1 : actions.Max(a => a.TourNumero) + 1;
-            if (actions.Count > 0)
+            _turnNumber = _actionHistory.Count == 0 ? 1 : _actionHistory.Max(a => a.TourNumero) + 1;
+            if (_actionHistory.Count > 0)
             {
-                string lastPlayer = actions[^1].PlayerName;
+                string lastPlayer = _actionHistory[^1].PlayerName;
                 string expectedCurrent = string.Equals(lastPlayer, _turnDetector.Player1, StringComparison.OrdinalIgnoreCase)
                     ? _turnDetector.Player2
                     : _turnDetector.Player1;
@@ -541,9 +619,11 @@ namespace GomokuGame.ui
                 }
             }
 
-            TerminalLogger.Action($"Saved game loaded: partieId={partie.Id}, actions={actions.Count}, nextTurn={_turnNumber}, currentPlayer={_turnDetector.CurrentPlayer}");
             _board.Invalidate();
-            PromptCurrentTurnAction();
+            if (showActionPrompt)
+            {
+                PromptCurrentTurnAction();
+            }
         }
 
         private Color ResolvePlayerColor(string playerName, int turnNumber)
