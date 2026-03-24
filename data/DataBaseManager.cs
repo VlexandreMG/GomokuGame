@@ -13,7 +13,7 @@ namespace GomokuGame.data
             "Host=127.0.0.1;" +
             "Port=5432;" +
             "Username=postgres;" +
-            "Password=ton_mot_de_passe;" +
+            "Password=postgres;" +
             "Database=gomoku_db";
 
         public void TestConnection()
