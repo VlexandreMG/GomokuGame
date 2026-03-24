@@ -75,3 +75,6 @@ Cependant , tu vas modifier la structure de projet , c'est à dire , que pour ch
 tu vas créer des modèles dans le package model , un repository généralisé pour toutes les modèles (j'ai dit un seul pour tous), 
 des services dans le package service où l'on mettra toutes les logiques métiers. 
 Fais ça de manière à ne pas cassser le code mais de manière à ce que cela soit plus lisible (Pour des dev habiuter à java)
+
+17 - maintenant , on va faire correspondre la base de données à la logique de chargement de partie , c'est à dire , que vue qu'on a une partie sauvegarder dans la base de données 
+cette partie devrait être disponible dans la liste des chargements et lorsqu'on clique dessus , on retourne à la partie correspondante (respecter le tour , le nombre de points , les points posés )

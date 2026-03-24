@@ -50,4 +50,17 @@ public sealed class PartieService
             return Array.Empty<PartieModel>();
         }
     }
+
+    public PartieModel? TryGetPartieById(int id)
+    {
+        try
+        {
+            return _repository.FindByColumn<PartieModel>("id", id).FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            TerminalLogger.Action($"Partie read unavailable: {ex.Message}");
+            return null;
+        }
+    }
 }

@@ -42,7 +42,9 @@ namespace GomokuGame.data
 
                 return Directory
                     .GetFiles(savesDirectory, "*.json", SearchOption.TopDirectoryOnly)
-                    .Select(Path.GetFileNameWithoutExtension)
+                    .Select(file => Path.GetFileNameWithoutExtension(file))
+                    .Where(name => !string.IsNullOrWhiteSpace(name))
+                    .Select(name => name!)
                     .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
                     .ToList();
             }

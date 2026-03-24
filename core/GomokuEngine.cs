@@ -90,10 +90,25 @@ public sealed class GomokuEngine
         targetCell = new Point(targetX, targetY);
         TerminalLogger.Action($"Bomb target resolved to ({targetX},{targetY})");
 
+        return TryApplyBombAtTarget(shooterColor, targetCell, out removedStone, out hitProtectedWinningPoint, out currentWinningLines);
+    }
+
+    public bool TryApplyBombAtTarget(Color shooterColor, Point targetCell, out GameStone? removedStone, out bool hitProtectedWinningPoint, out IReadOnlyList<WinningLine> currentWinningLines)
+    {
+        removedStone = null;
+        hitProtectedWinningPoint = false;
+        currentWinningLines = new List<WinningLine>();
+
+        if (!IsInsideBoard(targetCell.X, targetCell.Y))
+        {
+            TerminalLogger.Action($"Bomb rejected: target ({targetCell.X},{targetCell.Y}) outside board");
+            return false;
+        }
+
         if (_protectedWinningPoints.Contains(targetCell))
         {
             hitProtectedWinningPoint = true;
-            TerminalLogger.Action($"Bomb blocked: ({targetX},{targetY}) is a protected winning-line point");
+            TerminalLogger.Action($"Bomb blocked: ({targetCell.X},{targetCell.Y}) is a protected winning-line point");
             currentWinningLines = GetWinningLinesExactFive();
             return true;
         }
@@ -102,7 +117,7 @@ public sealed class GomokuEngine
         {
             if (hitStone.Color == shooterColor)
             {
-                TerminalLogger.Action($"Bomb ignored at ({targetX},{targetY}): target is shooter's own stone ({hitStone.Color.Name})");
+                TerminalLogger.Action($"Bomb ignored at ({targetCell.X},{targetCell.Y}): target is shooter's own stone ({hitStone.Color.Name})");
                 currentWinningLines = GetWinningLinesExactFive();
                 return true;
             }
@@ -110,7 +125,7 @@ public sealed class GomokuEngine
             _stonesByPosition.Remove(targetCell);
             _stones.Remove(hitStone);
             removedStone = hitStone;
-            TerminalLogger.Action($"Bomb hit: stone removed at ({targetX},{targetY}) color={hitStone.Color.Name}");
+            TerminalLogger.Action($"Bomb hit: stone removed at ({targetCell.X},{targetCell.Y}) color={hitStone.Color.Name}");
         }
         else
         {

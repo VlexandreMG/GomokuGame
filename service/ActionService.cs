@@ -29,7 +29,11 @@ public sealed class ActionService
     {
         try
         {
-            return _repository.FindByColumn<ActionModel>("partie_id", partieId);
+            return _repository
+                .FindByColumn<ActionModel>("partie_id", partieId)
+                .OrderBy(a => a.TourNumero)
+                .ThenBy(a => a.Id)
+                .ToList();
         }
         catch (Exception ex)
         {

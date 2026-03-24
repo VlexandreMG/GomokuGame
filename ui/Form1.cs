@@ -115,7 +115,7 @@ namespace GomokuGame.ui
                 return;
             }
 
-            StartConfiguredGame(setup.Player1Name, setup.Player2Name, setup.GridSize);
+            StartFromSetup(setup);
         }
 
         private void Board_MouseClick(object? sender, MouseEventArgs e)
@@ -424,8 +424,19 @@ namespace GomokuGame.ui
                     return;
                 }
 
-                StartConfiguredGame(setup.Player1Name, setup.Player2Name, setup.GridSize);
+                StartFromSetup(setup);
             }
+        }
+
+        private void StartFromSetup(GameSetupResult setup)
+        {
+            if (setup.IsLoadRequest && setup.PartieIdToLoad.HasValue)
+            {
+                StartLoadedGame(setup.PartieIdToLoad.Value);
+                return;
+            }
+
+            StartConfiguredGame(setup.Player1Name, setup.Player2Name, setup.GridSize);
         }
 
         private void StartConfiguredGame(string player1Name, string player2Name, int gridSize)
@@ -458,6 +469,96 @@ namespace GomokuGame.ui
             TerminalLogger.Action($"Game setup complete: P1={player1Name} (Blue), P2={player2Name} (Red), grid={gridSize}, partieId={_currentPartieId}");
             _board.Invalidate();
             PromptCurrentTurnAction();
+        }
+
+        private void StartLoadedGame(int partieId)
+        {
+            var partie = _partieService.TryGetPartieById(partieId);
+            if (partie is null)
+            {
+                MessageBox.Show(this, "Impossible de charger cette partie (introuvable).", "Chargement", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            _player1Name = partie.Player1;
+            _player2Name = partie.Player2;
+            _gridSize = partie.GridSize;
+
+            _player1Score = 0;
+            _player2Score = 0;
+            _turnNumber = 1;
+            _currentPartieId = partie.Id;
+            _awardedLineSignatures.Clear();
+            _displayedLineSignatures.Clear();
+
+            _board.GridSize = _gridSize;
+            _board.PlacedPoints.Clear();
+            _board.WinningLines.Clear();
+            _board.DisableBombSelection();
+
+            _engine = new GomokuEngine(_gridSize);
+            _turnDetector = new TurnDetector(_player1Name, _player2Name);
+            _etatPartie = new EtatPartie();
+            _etatPartie.StartGame();
+            _pendingBombRowOneBased = null;
+            _isGameInitialized = true;
+            _endGameButton.Enabled = true;
+
+            var actions = _actionService.TryGetByPartieId(partieId);
+            foreach (var action in actions)
+            {
+                Color actorColor = ResolvePlayerColor(action.PlayerName, action.TourNumero);
+
+                if (string.Equals(action.TypeAction, "POINT", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (_engine.TryPlaceStone(action.X, action.Y, actorColor, out GameStone? replayPlacedStone, out IReadOnlyList<WinningLine> newLines))
+                    {
+                        SyncWinningLines(newLines);
+                    }
+                }
+                else if (string.Equals(action.TypeAction, "BOMBE", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (_engine.TryApplyBombAtTarget(actorColor, new Point(action.X, action.Y), out GameStone? replayRemovedStone, out bool replayHitProtectedPoint, out IReadOnlyList<WinningLine> currentWinningLines))
+                    {
+                        SyncWinningLines(currentWinningLines);
+                    }
+                }
+            }
+
+            SyncPointsFromEngine();
+
+            _turnNumber = actions.Count == 0 ? 1 : actions.Max(a => a.TourNumero) + 1;
+            if (actions.Count > 0)
+            {
+                string lastPlayer = actions[^1].PlayerName;
+                string expectedCurrent = string.Equals(lastPlayer, _turnDetector.Player1, StringComparison.OrdinalIgnoreCase)
+                    ? _turnDetector.Player2
+                    : _turnDetector.Player1;
+
+                if (!string.Equals(_turnDetector.CurrentPlayer, expectedCurrent, StringComparison.OrdinalIgnoreCase))
+                {
+                    _turnDetector.AdvanceTurn();
+                }
+            }
+
+            TerminalLogger.Action($"Saved game loaded: partieId={partie.Id}, actions={actions.Count}, nextTurn={_turnNumber}, currentPlayer={_turnDetector.CurrentPlayer}");
+            _board.Invalidate();
+            PromptCurrentTurnAction();
+        }
+
+        private Color ResolvePlayerColor(string playerName, int turnNumber)
+        {
+            if (string.Equals(playerName, _player1Name, StringComparison.OrdinalIgnoreCase))
+            {
+                return Color.Blue;
+            }
+
+            if (string.Equals(playerName, _player2Name, StringComparison.OrdinalIgnoreCase))
+            {
+                return Color.Red;
+            }
+
+            return turnNumber % 2 == 1 ? Color.Blue : Color.Red;
         }
     }
 }
