@@ -25,9 +25,9 @@ public sealed class GomokuEngine
         TerminalLogger.Action($"Engine created with grid size {GridSize}");
     }
 
-    public bool TryPlaceStone(int x, int y, out GameStone? placedStone, out IReadOnlyList<WinningLine> newWinningLines)
+    public bool TryPlaceStone(int x, int y, Color stoneColor, out GameStone? placedStone, out IReadOnlyList<WinningLine> newWinningLines)
     {
-        TerminalLogger.Action($"TryPlaceStone called at ({x},{y})");
+        TerminalLogger.Action($"TryPlaceStone called at ({x},{y}) with color={stoneColor.Name}");
         placedStone = null;
         newWinningLines = new List<WinningLine>();
 
@@ -44,7 +44,6 @@ public sealed class GomokuEngine
             return false;
         }
 
-        Color stoneColor = (_stones.Count % 2 == 0) ? Color.Blue : Color.Red;
         var stone = new GameStone(x, y, stoneColor);
         _stones.Add(stone);
         _stonesByPosition[position] = stone;
@@ -57,14 +56,14 @@ public sealed class GomokuEngine
         return true;
     }
 
-    public bool TryLaunchBomb(bool fromLeft, int lineOneBased, int power, out Point targetCell, out GameStone? removedStone, out bool hitProtectedWinningPoint, out IReadOnlyList<WinningLine> currentWinningLines)
+    public bool TryLaunchBomb(bool fromLeft, int lineOneBased, int power, Color shooterColor, out Point targetCell, out GameStone? removedStone, out bool hitProtectedWinningPoint, out IReadOnlyList<WinningLine> currentWinningLines)
     {
         targetCell = Point.Empty;
         removedStone = null;
         hitProtectedWinningPoint = false;
         currentWinningLines = new List<WinningLine>();
 
-        TerminalLogger.Action($"TryLaunchBomb called: fromLeft={fromLeft}, line={lineOneBased}, power={power}");
+        TerminalLogger.Action($"TryLaunchBomb called: fromLeft={fromLeft}, line={lineOneBased}, power={power}, shooterColor={shooterColor.Name}");
 
         if (lineOneBased < 1 || lineOneBased > GridSize)
         {
@@ -78,11 +77,13 @@ public sealed class GomokuEngine
             return false;
         }
 
-        int mappedOneBased = (power * GridSize) / 9;
+        double mappedExact = (power * (double)GridSize) / 9d;
+        int mappedOneBased = (int)Math.Floor(mappedExact);
         if (mappedOneBased < 1)
         {
             mappedOneBased = 1;
         }
+        TerminalLogger.Action($"Bomb power mapping: exact={mappedExact:F2}, floored={mappedOneBased}");
 
         int targetX = fromLeft ? mappedOneBased - 1 : GridSize - mappedOneBased;
         int targetY = lineOneBased - 1;
@@ -99,6 +100,13 @@ public sealed class GomokuEngine
 
         if (_stonesByPosition.TryGetValue(targetCell, out GameStone? hitStone))
         {
+            if (hitStone.Color == shooterColor)
+            {
+                TerminalLogger.Action($"Bomb ignored at ({targetX},{targetY}): target is shooter's own stone ({hitStone.Color.Name})");
+                currentWinningLines = GetWinningLinesExactFive();
+                return true;
+            }
+
             _stonesByPosition.Remove(targetCell);
             _stones.Remove(hitStone);
             removedStone = hitStone;
