@@ -107,7 +107,7 @@ namespace GomokuGame.ui
 
         private void ApplyDefaultStyles()
         {
-            this.Text = "Gomoku Game - Dessin Atomique";
+            this.Text = "Gomoku Game";
         }
 
         private void SetupEventHandlers()
@@ -169,7 +169,7 @@ namespace GomokuGame.ui
             {
                 // En mode bombe, un clic sert à choisir la ligne de tir (pas à poser un pion).
                 HandleBombRowSelection(e.X, e.Y);
-                return;
+                return; 
             }
 
             // Convertir le clic pixel en coordonnées de matrice

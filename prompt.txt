@@ -84,3 +84,6 @@ c'est à dire , que le tour de l'adversaire ainsi que mon tour précedent sont a
 
 19 - Maintenant , je veux que tu mettes PLEIN de commentaire en français pour que ça soit plus facile à appréhender
 Et , simplifie l'ecriture du code pour qu'il soit plus lisible et respecte le single responsability 
+
+20 - Je veux que tu me fasse un fichier.md qui explique le flux de tous le code 
+En allant du Menu vers la fin .
