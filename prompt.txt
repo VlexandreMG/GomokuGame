@@ -52,3 +52,5 @@ Qui est le vainqeur ? Et un bouton pour refaire une partie
 la bombe n'aura aucun effet . 
 La deuxième , lorsqu'on envoie une bombe , on doit cliquer sur ctrl + nombre sur pavé numerique
 La troisième , dans data , j'aimerais que tu me fasse une classe qui se connecte à la base de données 
+
+13 - Dans GameSetupMenu , fait moi d'abord un bouton charger partie qui me permet de voir une liste de partie.
