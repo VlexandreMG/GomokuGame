@@ -9,8 +9,15 @@ namespace GomokuGame.service;
 
 public sealed class ActionService
 {
+    // Constantes métier pour éviter les chaînes magiques dispersées.
+    private const string ActionPoint = "POINT";
+    private const string ActionBombe = "BOMBE";
+
     private readonly GenericRepository _repository;
 
+    /// <summary>
+    /// Reçoit le repository générique pour effectuer les opérations SQL sur la table actions.
+    /// </summary>
     public ActionService(GenericRepository repository)
     {
         _repository = repository;
@@ -18,18 +25,21 @@ public sealed class ActionService
 
     public bool TryRecordPointAction(int partieId, string playerName, int x, int y, int tourNumero)
     {
-        return TryRecordAction(partieId, playerName, x, y, tourNumero, "POINT");
+        // Enregistre un placement de point en base.
+        return TryRecordAction(partieId, playerName, x, y, tourNumero, ActionPoint);
     }
 
     public bool TryRecordBombAction(int partieId, string playerName, int x, int y, int tourNumero)
     {
-        return TryRecordAction(partieId, playerName, x, y, tourNumero, "BOMBE");
+        // Enregistre un tir canon (même si effet nul) car il consomme le tour.
+        return TryRecordAction(partieId, playerName, x, y, tourNumero, ActionBombe);
     }
 
     public IReadOnlyList<ActionModel> TryGetByPartieId(int partieId)
     {
         try
         {
+            // Tri déterministe pour rejouer une partie sans ambiguïté.
             return _repository
                 .FindByColumn<ActionModel>("partie_id", partieId)
                 .OrderBy(a => a.TourNumero)
@@ -45,6 +55,7 @@ public sealed class ActionService
 
     public bool TryDeleteLastActions(int partieId, int count)
     {
+        // Suppression des derniers coups: utilisée par le bouton "Retour" (undo).
         if (partieId <= 0 || count <= 0)
         {
             return true;
@@ -77,6 +88,9 @@ WHERE ctid IN (
         }
     }
 
+    /// <summary>
+    /// Méthode commune d'enregistrement d'action (point/bombe) dans l'historique de partie.
+    /// </summary>
     private bool TryRecordAction(int partieId, string playerName, int x, int y, int tourNumero, string type)
     {
         if (partieId <= 0)

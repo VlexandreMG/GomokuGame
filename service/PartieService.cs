@@ -8,24 +8,25 @@ namespace GomokuGame.service;
 
 public sealed class PartieService
 {
+    // Responsabilité: opérations métier liées aux parties (création/lecture).
     private readonly GenericRepository _repository;
 
+    /// <summary>
+    /// Reçoit le repository générique qui porte les accès à la table partie.
+    /// </summary>
     public PartieService(GenericRepository repository)
     {
         _repository = repository;
     }
 
+    /// <summary>
+    /// Crée une nouvelle partie en base avec les paramètres de la configuration initiale.
+    /// </summary>
     public int TryCreatePartie(string player1, string player2, int gridSize)
     {
         try
         {
-            var partie = new PartieModel
-            {
-                Player1 = player1,
-                Player2 = player2,
-                GridSize = gridSize,
-                DateCreation = DateTime.UtcNow
-            };
+            PartieModel partie = BuildPartieModel(player1, player2, gridSize);
 
             int id = _repository.Insert(partie);
             TerminalLogger.Action($"Partie saved in database with id={id}");
@@ -38,10 +39,14 @@ public sealed class PartieService
         }
     }
 
+    /// <summary>
+    /// Retourne l'ensemble des parties enregistrées.
+    /// </summary>
     public IReadOnlyList<PartieModel> TryGetParties()
     {
         try
         {
+            // Renvoie la liste brute; le tri de présentation est fait côté UI.
             return _repository.GetAll<PartieModel>();
         }
         catch (Exception ex)
@@ -51,10 +56,15 @@ public sealed class PartieService
         }
     }
 
+    /// <summary>
+    /// Retourne une partie par identifiant (ou null si indisponible).
+    /// </summary>
     public PartieModel? TryGetPartieById(int id)
     {
         try
         {
+            // On prend le premier résultat pour rester tolérant
+            // même si la requête renvoie une liste.
             return _repository.FindByColumn<PartieModel>("id", id).FirstOrDefault();
         }
         catch (Exception ex)
@@ -62,5 +72,19 @@ public sealed class PartieService
             TerminalLogger.Action($"Partie read unavailable: {ex.Message}");
             return null;
         }
+    }
+
+    /// <summary>
+    /// Construit le modèle de persistance de partie à insérer en base.
+    /// </summary>
+    private static PartieModel BuildPartieModel(string player1, string player2, int gridSize)
+    {
+        return new PartieModel
+        {
+            Player1 = player1,
+            Player2 = player2,
+            GridSize = gridSize,
+            DateCreation = DateTime.UtcNow
+        };
     }
 }

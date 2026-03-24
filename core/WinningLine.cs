@@ -8,6 +8,9 @@ public sealed class WinningLine
     public Point End { get; }
     public Color Color { get; }
 
+    /// <summary>
+    /// Représente une ligne gagnante: point de départ, point de fin et couleur du joueur.
+    /// </summary>
     public WinningLine(Point start, Point end, Color color)
     {
         Start = start;

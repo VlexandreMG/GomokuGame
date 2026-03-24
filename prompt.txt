@@ -81,3 +81,6 @@ cette partie devrait être disponible dans la liste des chargements et lorsqu'on
 
 18 - maintenant , on va faire un bouton de retour : cela consiste à revenir sur son dernier tour comme pour un ctrl + z 
 c'est à dire , que le tour de l'adversaire ainsi que mon tour précedent sont annulés et le tour me revient (c'est aussi valable pour les tirs au canons)
+
+19 - Maintenant , je veux que tu mettes PLEIN de commentaire en français pour que ça soit plus facile à appréhender
+Et , simplifie l'ecriture du code pour qu'il soit plus lisible et respecte le single responsability 

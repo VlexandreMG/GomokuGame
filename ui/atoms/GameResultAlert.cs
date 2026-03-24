@@ -4,6 +4,9 @@ namespace GomokuGame.ui.atoms;
 
 public static class GameResultAlert
 {
+    /// <summary>
+    /// Affiche le résultat final (scores + vainqueur) et demande si l'utilisateur veut rejouer.
+    /// </summary>
     public static bool ShowResultAndAskReplay(
         IWin32Window? owner,
         string player1Name,

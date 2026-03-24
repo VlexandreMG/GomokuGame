@@ -13,6 +13,9 @@ public sealed class GameSetupResult
     public bool IsLoadRequest { get; }
     public int? PartieIdToLoad { get; }
 
+    /// <summary>
+    /// Contient le résultat du menu de lancement: nouvelle partie ou demande de chargement.
+    /// </summary>
     public GameSetupResult(string player1Name, string player2Name, int gridSize, bool isLoadRequest = false, int? partieIdToLoad = null)
     {
         Player1Name = player1Name;
@@ -22,6 +25,9 @@ public sealed class GameSetupResult
         PartieIdToLoad = partieIdToLoad;
     }
 
+    /// <summary>
+    /// Fabrique un résultat spécialisé pour le chargement d'une partie existante.
+    /// </summary>
     public static GameSetupResult ForLoad(int partieId)
     {
         return new GameSetupResult(string.Empty, string.Empty, 0, true, partieId);
@@ -30,6 +36,9 @@ public sealed class GameSetupResult
 
 public static class GameSetupMenu
 {
+    /// <summary>
+    /// Ouvre le menu principal de configuration et renvoie le choix final utilisateur.
+    /// </summary>
     public static bool TryGetConfiguration(IWin32Window? owner, out GameSetupResult? result)
     {
         result = null;
@@ -186,6 +195,9 @@ public static class GameSetupMenu
         return true;
     }
 
+    /// <summary>
+    /// Affiche la liste des parties sauvegardées en base et renvoie l'identifiant sélectionné.
+    /// </summary>
     private static bool TrySelectSavedPartie(IWin32Window? owner, out int partieId)
     {
         partieId = 0;

@@ -5,6 +5,7 @@ namespace GomokuGame.core;
 
 public sealed class GomokuEngine
 {
+    // Etat interne du moteur: positions occupées, historique des pierres, protection des lignes.
     private readonly Dictionary<Point, GameStone> _stonesByPosition = new Dictionary<Point, GameStone>();
     private readonly List<GameStone> _stones = new List<GameStone>();
     private readonly HashSet<Point> _protectedWinningPoints = new HashSet<Point>();
@@ -19,14 +20,21 @@ public sealed class GomokuEngine
     public int GridSize { get; }
     public IReadOnlyList<GameStone> Stones => _stones;
 
+    /// <summary>
+    /// Initialise le moteur avec une taille de grille fixe.
+    /// </summary>
     public GomokuEngine(int gridSize)
     {
         GridSize = gridSize;
         TerminalLogger.Action($"Engine created with grid size {GridSize}");
     }
 
+    /// <summary>
+    /// Tente de poser une pierre, puis détecte et retourne les nouvelles lignes gagnantes.
+    /// </summary>
     public bool TryPlaceStone(int x, int y, Color stoneColor, out GameStone? placedStone, out IReadOnlyList<WinningLine> newWinningLines)
     {
+        // Place une pierre si la case est valide, puis détecte les nouvelles lignes de 5.
         TerminalLogger.Action($"TryPlaceStone called at ({x},{y}) with color={stoneColor.Name}");
         placedStone = null;
         newWinningLines = new List<WinningLine>();
@@ -56,6 +64,9 @@ public sealed class GomokuEngine
         return true;
     }
 
+    /// <summary>
+    /// Calcule la case ciblée par une bombe (ligne + puissance), puis applique l'impact.
+    /// </summary>
     public bool TryLaunchBomb(bool fromLeft, int lineOneBased, int power, Color shooterColor, out Point targetCell, out GameStone? removedStone, out bool hitProtectedWinningPoint, out IReadOnlyList<WinningLine> currentWinningLines)
     {
         targetCell = Point.Empty;
@@ -77,6 +88,7 @@ public sealed class GomokuEngine
             return false;
         }
 
+        // Mapping puissance (1..9) -> colonne cible via règle de trois.
         double mappedExact = (power * (double)GridSize) / 9d;
         int mappedOneBased = (int)Math.Floor(mappedExact);
         if (mappedOneBased < 1)
@@ -85,16 +97,18 @@ public sealed class GomokuEngine
         }
         TerminalLogger.Action($"Bomb power mapping: exact={mappedExact:F2}, floored={mappedOneBased}");
 
-        int targetX = fromLeft ? mappedOneBased - 1 : GridSize - mappedOneBased;
-        int targetY = lineOneBased - 1;
-        targetCell = new Point(targetX, targetY);
-        TerminalLogger.Action($"Bomb target resolved to ({targetX},{targetY})");
+        targetCell = ResolveBombTarget(fromLeft, lineOneBased, mappedOneBased);
+        TerminalLogger.Action($"Bomb target resolved to ({targetCell.X},{targetCell.Y})");
 
         return TryApplyBombAtTarget(shooterColor, targetCell, out removedStone, out hitProtectedWinningPoint, out currentWinningLines);
     }
 
+    /// <summary>
+    /// Applique directement une bombe sur une case donnée (utile pour replay/chargement).
+    /// </summary>
     public bool TryApplyBombAtTarget(Color shooterColor, Point targetCell, out GameStone? removedStone, out bool hitProtectedWinningPoint, out IReadOnlyList<WinningLine> currentWinningLines)
     {
+        // API de replay: applique un tir sur une case déjà calculée.
         removedStone = null;
         hitProtectedWinningPoint = false;
         currentWinningLines = new List<WinningLine>();
@@ -137,8 +151,12 @@ public sealed class GomokuEngine
         return true;
     }
 
+    /// <summary>
+    /// Marque comme protégés les points des nouvelles lignes de 5 validées.
+    /// </summary>
     private void ProtectPointsFromNewWinningLines(IReadOnlyList<WinningLine> newWinningLines)
     {
+        // Une fois une ligne validée, ses 5 points deviennent invulnérables aux bombes.
         foreach (WinningLine line in newWinningLines)
         {
             foreach (Point p in EnumerateLinePoints(line))
@@ -151,6 +169,9 @@ public sealed class GomokuEngine
         }
     }
 
+    /// <summary>
+    /// Enumère les 5 points exacts d'une ligne gagnante (du start vers end).
+    /// </summary>
     private static IEnumerable<Point> EnumerateLinePoints(WinningLine line)
     {
         int dx = Math.Sign(line.End.X - line.Start.X);
@@ -167,8 +188,12 @@ public sealed class GomokuEngine
         }
     }
 
+    /// <summary>
+    /// Recalcule toutes les lignes gagnantes de longueur exactement 5.
+    /// </summary>
     public IReadOnlyList<WinningLine> GetWinningLinesExactFive()
     {
+        // Recalcul complet de toutes les lignes visibles de longueur exactement 5.
         var lines = new List<WinningLine>();
 
         foreach (GameStone stone in _stones)
@@ -216,8 +241,12 @@ public sealed class GomokuEngine
         return lines;
     }
 
+    /// <summary>
+    /// Recherche les nouvelles lignes créées par le dernier coup posé.
+    /// </summary>
     private List<WinningLine> FindNewWinningLines(GameStone originStone)
     {
+        // Scan orienté autour du dernier coup pour trouver uniquement les nouvelles lignes.
         var lines = new List<WinningLine>();
 
         foreach (var (dx, dy) in _scanDirections)
@@ -242,8 +271,12 @@ public sealed class GomokuEngine
         return lines;
     }
 
+    /// <summary>
+    /// Récupère le segment continu aligné contenant la pierre d'origine.
+    /// </summary>
     private List<Point> CollectAlignedRunPoints(GameStone originStone, int dx, int dy)
     {
+        // Collecte un segment continu de même couleur dans une direction donnée.
         var runPoints = new List<Point>();
         int startX = originStone.X;
         int startY = originStone.Y;
@@ -272,11 +305,17 @@ public sealed class GomokuEngine
         return runPoints;
     }
 
+    /// <summary>
+    /// Indique si les coordonnées sont incluses dans les bornes de la grille.
+    /// </summary>
     private bool IsInsideBoard(int x, int y)
     {
         return x >= 0 && x < GridSize && y >= 0 && y < GridSize;
     }
 
+    /// <summary>
+    /// Vérifie si une pierre de la couleur demandée existe sur la case indiquée.
+    /// </summary>
     private bool HasSameColorStoneAt(int x, int y, Color color)
     {
         if (!IsInsideBoard(x, y))
@@ -286,5 +325,15 @@ public sealed class GomokuEngine
 
         var p = new Point(x, y);
         return _stonesByPosition.TryGetValue(p, out GameStone? stone) && stone.Color == color;
+    }
+
+    /// <summary>
+    /// Transforme une ligne + puissance mappée en coordonnées exactes de cible.
+    /// </summary>
+    private Point ResolveBombTarget(bool fromLeft, int lineOneBased, int mappedOneBased)
+    {
+        int targetX = fromLeft ? mappedOneBased - 1 : GridSize - mappedOneBased;
+        int targetY = lineOneBased - 1;
+        return new Point(targetX, targetY);
     }
 }

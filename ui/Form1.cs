@@ -13,17 +13,26 @@ using GomokuGame.ui.atoms;
 
 namespace GomokuGame.ui
 {
+    // Form1 pilote uniquement le flux UI (clics, clavier, affichage).
+    // La logique métier reste déléguée au moteur et aux services.
     public partial class Form1 : Form
     {
+        // ---------- Composants UI ----------
         private GameBoard _board = null!;
         private Panel _bottomPanel = null!;
         private Button _endGameButton = null!;
         private Button _undoButton = null!;
+
+        // ---------- Composants métier ----------
         private GomokuEngine _engine = null!;
         private TurnDetector _turnDetector = null!;
         private EtatPartie _etatPartie = null!;
+
+        // ---------- Etat de tour/interaction ----------
         private int? _pendingBombRowOneBased;
         private bool _isGameInitialized;
+
+        // ---------- Métadonnées de la partie ----------
         private string _player1Name = "Joueur 1";
         private string _player2Name = "Joueur 2";
         private int _gridSize = 15;
@@ -31,9 +40,15 @@ namespace GomokuGame.ui
         private int _player2Score;
         private int _currentPartieId;
         private int _turnNumber = 1;
+
+        // ---------- Accès données ----------
         private PartieService _partieService = null!;
         private ActionService _actionService = null!;
+
+        // ---------- Historique local (source de vérité pour rebuild/undo) ----------
         private readonly List<ActionModel> _actionHistory = new List<ActionModel>();
+
+        // ---------- Garde-fous pour éviter double-comptage visuel/score ----------
         private readonly HashSet<string> _awardedLineSignatures = new HashSet<string>();
         private readonly HashSet<string> _displayedLineSignatures = new HashSet<string>();
 
@@ -47,6 +62,7 @@ namespace GomokuGame.ui
 
         private void InitializeLifecycle()
         {
+            // Cette méthode orchestre l'initialisation dans un ordre stable et lisible.
             CreateComponents();
             SetupLayout();
             ApplyDefaultStyles();
@@ -56,6 +72,7 @@ namespace GomokuGame.ui
 
         private void CreateComponents()
         {
+            // Instanciation des contrôles UI.
             _board = new GameBoard();
             _bottomPanel = new Panel();
             _endGameButton = new Button();
@@ -95,7 +112,8 @@ namespace GomokuGame.ui
 
         private void SetupEventHandlers()
         {
-            _board.MouseClick += Board_MouseClick; // Gérer le clic sur le plateau
+            // Ici on relie les événements UI aux handlers dédiés.
+            _board.MouseClick += Board_MouseClick;
             _endGameButton.Click += EndGameButton_Click;
             _undoButton.Click += UndoButton_Click;
             this.KeyPreview = true;
@@ -105,6 +123,7 @@ namespace GomokuGame.ui
 
         private void Initialize()
         {
+            // Initialisation des services data (accès base).
             DatabaseManager databaseManager = new DatabaseManager();
             GenericRepository repository = databaseManager.Repository;
             _partieService = new PartieService(repository);
@@ -131,6 +150,7 @@ namespace GomokuGame.ui
 
         private void Board_MouseClick(object? sender, MouseEventArgs e)
         {
+            // Garde-fou: on ignore toute interaction avant le démarrage.
             if (!_isGameInitialized)
             {
                 TerminalLogger.Action("Click ignored: game not initialized yet");
@@ -147,6 +167,7 @@ namespace GomokuGame.ui
 
             if (_turnDetector.CurrentAction == TurnAction.LaunchBomb)
             {
+                // En mode bombe, un clic sert à choisir la ligne de tir (pas à poser un pion).
                 HandleBombRowSelection(e.X, e.Y);
                 return;
             }
@@ -159,6 +180,7 @@ namespace GomokuGame.ui
             // Vérifier qu'on est bien sur une intersection de la grille
             if (x >= 0 && x < _board.GridSize && y >= 0 && y < _board.GridSize)
             {
+                // La couleur du coup vient du joueur courant.
                 Color currentPlayerColor = _turnDetector.CurrentPlayer == _turnDetector.Player1 ? Color.Blue : Color.Red;
                 if (!_engine.TryPlaceStone(x, y, currentPlayerColor, out GameStone? placedStone, out IReadOnlyList<WinningLine> newLines) || placedStone is null)
                 {
@@ -172,6 +194,7 @@ namespace GomokuGame.ui
 
                 SyncWinningLines(newLines);
 
+                // Persistance et historique local du coup (utile pour chargement + undo).
                 _actionService.TryRecordPointAction(
                     _currentPartieId,
                     _turnDetector.CurrentPlayer,
@@ -192,6 +215,7 @@ namespace GomokuGame.ui
 
         private void MoveToNextTurn()
         {
+            // Changement de tour = reset des états temporaires de bombe.
             _pendingBombRowOneBased = null;
             _board.DisableBombSelection();
 
@@ -208,6 +232,7 @@ namespace GomokuGame.ui
 
         private void HandleBombRowSelection(int pixelX, int pixelY)
         {
+            // Le côté de tir dépend du joueur courant.
             bool fromLeft = _turnDetector.CurrentPlayer == _turnDetector.Player1;
             if (_pendingBombRowOneBased.HasValue)
             {
@@ -229,6 +254,7 @@ namespace GomokuGame.ui
 
         private void Form1_KeyDown(object? sender, KeyEventArgs e)
         {
+            // Le clavier ne sert que pendant une partie active.
             if (!_isGameInitialized)
             {
                 return;
@@ -242,6 +268,7 @@ namespace GomokuGame.ui
 
             if (e.Control && e.KeyCode == Keys.Z)
             {
+                // Raccourci global de retour arrière.
                 e.Handled = true;
                 e.SuppressKeyPress = true;
                 UndoLastRound();
@@ -287,6 +314,7 @@ namespace GomokuGame.ui
             SyncPointsFromEngine();
             SyncWinningLines(currentWinningLines);
 
+            // Même en cas d'échec de bombe, on sauvegarde l'action car elle consomme le tour.
             _actionService.TryRecordBombAction(
                 _currentPartieId,
                 _turnDetector.CurrentPlayer,
@@ -306,6 +334,7 @@ namespace GomokuGame.ui
 
         private void SyncPointsFromEngine()
         {
+            // La vue plateau est toujours synchronisée à partir de l'état moteur.
             _board.PlacedPoints.Clear();
             foreach (GameStone stone in _engine.Stones)
             {
@@ -315,6 +344,7 @@ namespace GomokuGame.ui
 
         private void SyncWinningLines(IReadOnlyList<WinningLine> lines)
         {
+            // On garde les lignes déjà dessinées pour éviter les doublons visuels.
             foreach (WinningLine line in lines)
             {
                 string signature = BuildLineSignature(line);
@@ -330,6 +360,7 @@ namespace GomokuGame.ui
 
         private void UpdateScoresFromLines(IReadOnlyList<WinningLine> lines)
         {
+            // On incrémente le score uniquement lors de la première apparition d'une ligne.
             foreach (WinningLine line in lines)
             {
                 string signature = BuildLineSignature(line);
@@ -365,6 +396,7 @@ namespace GomokuGame.ui
 
         private void PromptCurrentTurnAction()
         {
+            // Cette méthode centralise l'UX de début de tour.
             if (!_etatPartie.IsInProgress)
             {
                 TerminalLogger.Action("Turn prompt skipped: game is finished");
@@ -391,6 +423,7 @@ namespace GomokuGame.ui
 
         private static int? TryMapPowerFromKey(Keys key, bool isCtrlPressed)
         {
+            // Le tir canon n'est valide que via Ctrl + pavé numérique 1..9.
             if (!isCtrlPressed)
             {
                 return null;
@@ -454,6 +487,7 @@ namespace GomokuGame.ui
 
         private void StartFromSetup(GameSetupResult setup)
         {
+            // Point d'entrée unique: nouvelle partie OU chargement.
             if (setup.IsLoadRequest && setup.PartieIdToLoad.HasValue)
             {
                 StartLoadedGame(setup.PartieIdToLoad.Value);
@@ -465,12 +499,8 @@ namespace GomokuGame.ui
 
         private void StartConfiguredGame(string player1Name, string player2Name, int gridSize)
         {
-            _player1Name = player1Name;
-            _player2Name = player2Name;
-            _gridSize = gridSize;
-
-            _turnNumber = 1;
-            _currentPartieId = 0;
+            // Nouvelle partie: on crée l'enregistrement puis on reconstruit un état vide.
+            ConfigurePartieMetadata(player1Name, player2Name, gridSize, 0);
             _actionHistory.Clear();
             _currentPartieId = _partieService.TryCreatePartie(player1Name, player2Name, gridSize);
             RebuildStateFromHistory(false);
@@ -481,6 +511,7 @@ namespace GomokuGame.ui
 
         private void StartLoadedGame(int partieId)
         {
+            // Chargement d'une partie existante en base.
             var partie = _partieService.TryGetPartieById(partieId);
             if (partie is null)
             {
@@ -488,24 +519,10 @@ namespace GomokuGame.ui
                 return;
             }
 
-            _player1Name = partie.Player1;
-            _player2Name = partie.Player2;
-            _gridSize = partie.GridSize;
-
-            _currentPartieId = partie.Id;
+            ConfigurePartieMetadata(partie.Player1, partie.Player2, partie.GridSize, partie.Id);
 
             var actions = _actionService.TryGetByPartieId(partieId);
-            _actionHistory.Clear();
-            _actionHistory.AddRange(actions.Select(a => new ActionModel
-            {
-                Id = a.Id,
-                PartieId = a.PartieId,
-                PlayerName = a.PlayerName,
-                X = a.X,
-                Y = a.Y,
-                TourNumero = a.TourNumero,
-                TypeAction = a.TypeAction
-            }));
+            LoadActionHistory(actions);
 
             RebuildStateFromHistory(false);
 
@@ -515,11 +532,13 @@ namespace GomokuGame.ui
 
         private void UndoButton_Click(object? sender, EventArgs e)
         {
+            // Délégation explicite vers la logique de retour.
             UndoLastRound();
         }
 
         private void UndoLastRound()
         {
+            // Retour = annuler les 2 derniers tours (moi + adversaire).
             if (!_isGameInitialized || !_etatPartie.IsInProgress)
             {
                 TerminalLogger.Action("Undo ignored: game not ready");
@@ -551,6 +570,7 @@ namespace GomokuGame.ui
 
         private void AddActionToHistory(string type, string playerName, int x, int y, int tourNumero)
         {
+            // L'historique local est notre base pour reconstruire l'état visuel et logique.
             _actionHistory.Add(new ActionModel
             {
                 PartieId = _currentPartieId,
@@ -564,6 +584,10 @@ namespace GomokuGame.ui
 
         private void RebuildStateFromHistory(bool showActionPrompt)
         {
+            // Reconstruction totale déterministe depuis l'historique:
+            // 1) reset complet
+            // 2) replay ordonné des actions
+            // 3) recalcul tour/score/lignes
             _player1Score = 0;
             _player2Score = 0;
             _awardedLineSignatures.Clear();
@@ -585,6 +609,7 @@ namespace GomokuGame.ui
 
             foreach (var action in _actionHistory.OrderBy(a => a.TourNumero).ThenBy(a => a.Id))
             {
+                // On rejoue exactement chaque action pour retrouver un état cohérent.
                 Color actorColor = ResolvePlayerColor(action.PlayerName, action.TourNumero);
 
                 if (string.Equals(action.TypeAction, "POINT", StringComparison.OrdinalIgnoreCase))
@@ -626,8 +651,35 @@ namespace GomokuGame.ui
             }
         }
 
+        private void ConfigurePartieMetadata(string player1Name, string player2Name, int gridSize, int partieId)
+        {
+            // Cette méthode isole les affectations de métadonnées de partie.
+            _player1Name = player1Name;
+            _player2Name = player2Name;
+            _gridSize = gridSize;
+            _turnNumber = 1;
+            _currentPartieId = partieId;
+        }
+
+        private void LoadActionHistory(IReadOnlyList<ActionModel> actions)
+        {
+            // Copie explicite pour éviter les effets de bord sur les objets fournis par le service.
+            _actionHistory.Clear();
+            _actionHistory.AddRange(actions.Select(a => new ActionModel
+            {
+                Id = a.Id,
+                PartieId = a.PartieId,
+                PlayerName = a.PlayerName,
+                X = a.X,
+                Y = a.Y,
+                TourNumero = a.TourNumero,
+                TypeAction = a.TypeAction
+            }));
+        }
+
         private Color ResolvePlayerColor(string playerName, int turnNumber)
         {
+            // Priorité aux noms joueurs réels; sinon fallback basé sur parité du tour.
             if (string.Equals(playerName, _player1Name, StringComparison.OrdinalIgnoreCase))
             {
                 return Color.Blue;
