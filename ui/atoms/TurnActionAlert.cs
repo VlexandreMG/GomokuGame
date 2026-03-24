@@ -5,6 +5,9 @@ namespace GomokuGame.ui.atoms;
 
 public static class TurnActionAlert
 {
+    /// <summary>
+    /// Affiche la boîte de choix d'action du tour et retourne l'action sélectionnée.
+    /// </summary>
     public static TurnAction ShowTurnChoice(IWin32Window? owner, string playerName)
     {
         DialogResult result = MessageBox.Show(
@@ -17,6 +20,9 @@ public static class TurnActionAlert
         return result == DialogResult.No ? TurnAction.LaunchBomb : TurnAction.PlacePoint;
     }
 
+    /// <summary>
+    /// Informe le joueur de la sélection de ligne canon à effectuer sur le plateau.
+    /// </summary>
     public static void ShowBombRowSelectionHint(IWin32Window? owner, string playerName, bool fromLeft)
     {
         string sideText = fromLeft ? "gauche" : "droite";
@@ -28,6 +34,9 @@ public static class TurnActionAlert
             MessageBoxIcon.Information);
     }
 
+            /// <summary>
+            /// Rappelle la combinaison clavier attendue pour envoyer le tir canon.
+            /// </summary>
     public static void ShowBombPowerInputHint(IWin32Window? owner, string playerName, int row)
     {
         MessageBox.Show(

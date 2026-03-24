@@ -1,5 +1,7 @@
 using System.Windows.Forms;
 using GomokuGame.data;
+using GomokuGame.model;
+using GomokuGame.service;
 
 namespace GomokuGame.ui.atoms;
 
@@ -8,20 +10,39 @@ public sealed class GameSetupResult
     public string Player1Name { get; }
     public string Player2Name { get; }
     public int GridSize { get; }
+    public bool IsLoadRequest { get; }
+    public int? PartieIdToLoad { get; }
 
-    public GameSetupResult(string player1Name, string player2Name, int gridSize)
+    /// <summary>
+    /// Contient le résultat du menu de lancement: nouvelle partie ou demande de chargement.
+    /// </summary>
+    public GameSetupResult(string player1Name, string player2Name, int gridSize, bool isLoadRequest = false, int? partieIdToLoad = null)
     {
         Player1Name = player1Name;
         Player2Name = player2Name;
         GridSize = gridSize;
+        IsLoadRequest = isLoadRequest;
+        PartieIdToLoad = partieIdToLoad;
+    }
+
+    /// <summary>
+    /// Fabrique un résultat spécialisé pour le chargement d'une partie existante.
+    /// </summary>
+    public static GameSetupResult ForLoad(int partieId)
+    {
+        return new GameSetupResult(string.Empty, string.Empty, 0, true, partieId);
     }
 }
 
 public static class GameSetupMenu
 {
+    /// <summary>
+    /// Ouvre le menu principal de configuration et renvoie le choix final utilisateur.
+    /// </summary>
     public static bool TryGetConfiguration(IWin32Window? owner, out GameSetupResult? result)
     {
         result = null;
+        int? selectedPartieId = null;
 
         using Form dialog = new Form();
         dialog.Text = "Configuration de la partie";
@@ -128,7 +149,17 @@ public static class GameSetupMenu
             Text = "Charger partie"
         };
 
-        loadButton.Click += (_, _) => ShowSavedGamesList(owner);
+        loadButton.Click += (_, _) =>
+        {
+            if (!TrySelectSavedPartie(owner, out int partieId))
+            {
+                return;
+            }
+
+            selectedPartieId = partieId;
+            dialog.DialogResult = DialogResult.OK;
+            dialog.Close();
+        };
 
         dialog.Controls.Add(introLabel);
         dialog.Controls.Add(colorLabel);
@@ -150,6 +181,12 @@ public static class GameSetupMenu
             return false;
         }
 
+        if (selectedPartieId.HasValue)
+        {
+            result = GameSetupResult.ForLoad(selectedPartieId.Value);
+            return true;
+        }
+
         string p1 = string.IsNullOrWhiteSpace(p1Input.Text) ? "Joueur 1" : p1Input.Text.Trim();
         string p2 = string.IsNullOrWhiteSpace(p2Input.Text) ? "Joueur 2" : p2Input.Text.Trim();
         int gridSize = (int)gridInput.Value;
@@ -158,10 +195,18 @@ public static class GameSetupMenu
         return true;
     }
 
-    private static void ShowSavedGamesList(IWin32Window? owner)
+    /// <summary>
+    /// Affiche la liste des parties sauvegardées en base et renvoie l'identifiant sélectionné.
+    /// </summary>
+    private static bool TrySelectSavedPartie(IWin32Window? owner, out int partieId)
     {
-        DatabaseManager databaseManager = new DatabaseManager();
-        var savedGames = databaseManager.GetSavedGames();
+        partieId = 0;
+        int selectedPartieId = 0;
+        PartieService partieService = new PartieService(new DatabaseManager().Repository);
+        IReadOnlyList<PartieModel> parties = partieService
+            .TryGetParties()
+            .OrderByDescending(p => p.DateCreation)
+            .ToList();
 
         using Form listDialog = new Form();
         listDialog.Text = "Parties sauvegardees";
@@ -188,18 +233,28 @@ public static class GameSetupMenu
             Height = 220
         };
 
-        if (savedGames.Count == 0)
+        if (parties.Count == 0)
         {
             gamesList.Items.Add("Aucune partie sauvegardee");
             gamesList.Enabled = false;
         }
         else
         {
-            foreach (string game in savedGames)
+            foreach (PartieModel partie in parties)
             {
-                gamesList.Items.Add(game);
+                string label = $"#{partie.Id} | {partie.Player1} vs {partie.Player2} | Grille {partie.GridSize} | {partie.DateCreation:yyyy-MM-dd HH:mm}";
+                gamesList.Items.Add(label);
             }
         }
+
+        Button loadSelectedButton = new Button
+        {
+            Left = 204,
+            Top = 264,
+            Width = 84,
+            Text = "Charger",
+            Enabled = parties.Count > 0
+        };
 
         Button closeButton = new Button
         {
@@ -210,12 +265,35 @@ public static class GameSetupMenu
             DialogResult = DialogResult.OK
         };
 
+        loadSelectedButton.Click += (_, _) =>
+        {
+            if (gamesList.SelectedIndex < 0 || gamesList.SelectedIndex >= parties.Count)
+            {
+                MessageBox.Show(owner, "Selectionne une partie a charger.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            selectedPartieId = parties[gamesList.SelectedIndex].Id;
+            listDialog.DialogResult = DialogResult.Yes;
+            listDialog.Close();
+        };
+
+        gamesList.DoubleClick += (_, _) => loadSelectedButton.PerformClick();
+
         listDialog.Controls.Add(infoLabel);
         listDialog.Controls.Add(gamesList);
+        listDialog.Controls.Add(loadSelectedButton);
         listDialog.Controls.Add(closeButton);
-        listDialog.AcceptButton = closeButton;
+        listDialog.AcceptButton = loadSelectedButton;
         listDialog.CancelButton = closeButton;
 
-        listDialog.ShowDialog(owner);
+        bool selected = listDialog.ShowDialog(owner) == DialogResult.Yes;
+        if (selected)
+        {
+            partieId = selectedPartieId;
+            return true;
+        }
+
+        return false;
     }
 }

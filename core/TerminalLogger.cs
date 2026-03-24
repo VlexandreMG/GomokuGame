@@ -7,6 +7,9 @@ public static class TerminalLogger
 {
     private static bool _isReady;
 
+    /// <summary>
+    /// Prépare une console de sortie pour le debug (terminal parent ou nouvelle console).
+    /// </summary>
     public static void Initialize()
     {
         if (_isReady)
@@ -24,6 +27,9 @@ public static class TerminalLogger
         Action("Logger initialised");
     }
 
+    /// <summary>
+    /// Ecrit une action horodatée dans la console pour faciliter le suivi du flux.
+    /// </summary>
     public static void Action(string message)
     {
         if (!_isReady)
