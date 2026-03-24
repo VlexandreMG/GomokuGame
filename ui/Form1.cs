@@ -27,6 +27,7 @@ namespace GomokuGame.ui
         private Button _shootButton = null!;
         private Button _endGameButton = null!;
         private Button _undoButton = null!;
+        private System.Windows.Forms.Timer _shotTraceTimer = null!;
 
         // ---------- Composants métier ----------
         private GomokuEngine _engine = null!;
@@ -88,6 +89,7 @@ namespace GomokuGame.ui
             _shootButton = new Button();
             _endGameButton = new Button();
             _undoButton = new Button();
+            _shotTraceTimer = new System.Windows.Forms.Timer();
 
             _topPanel.Dock = DockStyle.Top;
             _topPanel.Height = 44;
@@ -157,6 +159,8 @@ namespace GomokuGame.ui
             _undoButton.Enabled = false;
             _undoButton.Margin = new Padding(0);
 
+            _shotTraceTimer.Interval = 35;
+
             topButtonsRow.Controls.Add(_placePointButton);
             topButtonsRow.Controls.Add(_shootButton);
             bottomButtonsRow.Controls.Add(_undoButton);
@@ -191,10 +195,20 @@ namespace GomokuGame.ui
             _shootButton.Click += ShootButton_Click;
             _endGameButton.Click += EndGameButton_Click;
             _undoButton.Click += UndoButton_Click;
+            _shotTraceTimer.Tick += ShotTraceTimer_Tick;
             this.KeyPreview = true;
             this.KeyDown += Form1_KeyDown;
             this.Shown += Form1_Shown;
             this.Resize += Form1_Resize;
+        }
+
+        private void ShotTraceTimer_Tick(object? sender, EventArgs e)
+        {
+            bool stillVisible = _board.FadeTransientShotMarker();
+            if (!stillVisible)
+            {
+                _shotTraceTimer.Stop();
+            }
         }
 
         private void PlacePointButton_Click(object? sender, EventArgs e)
@@ -418,6 +432,9 @@ namespace GomokuGame.ui
 
             SyncPointsFromEngine();
             SyncWinningLines(currentWinningLines);
+            _board.ShowTransientShotMarker(targetCell, shooterColor);
+            _shotTraceTimer.Stop();
+            _shotTraceTimer.Start();
 
             // Même en cas d'échec de bombe, on sauvegarde l'action car elle consomme le tour.
             _actionService.TryRecordBombAction(
@@ -522,6 +539,15 @@ namespace GomokuGame.ui
 
             return key switch
             {
+                Keys.D1 => 1,
+                Keys.D2 => 2,
+                Keys.D3 => 3,
+                Keys.D4 => 4,
+                Keys.D5 => 5,
+                Keys.D6 => 6,
+                Keys.D7 => 7,
+                Keys.D8 => 8,
+                Keys.D9 => 9,
                 Keys.NumPad1 => 1,
                 Keys.NumPad2 => 2,
                 Keys.NumPad3 => 3,
@@ -551,6 +577,8 @@ namespace GomokuGame.ui
 
             _etatPartie.EndGame("User clicked Terminer la partie");
             _pendingBombRowOneBased = null;
+            _shotTraceTimer.Stop();
+            _board.ClearTransientShotMarker();
             _board.DisableBombSelection();
             _placePointButton.Enabled = false;
             _shootButton.Enabled = false;
@@ -690,6 +718,8 @@ namespace GomokuGame.ui
             _board.GridRows = _gridHeight;
             _board.PlacedPoints.Clear();
             _board.WinningLines.Clear();
+            _shotTraceTimer.Stop();
+            _board.ClearTransientShotMarker();
             _board.DisableBombSelection();
 
             _engine = new GomokuEngine(_gridWidth, _gridHeight);

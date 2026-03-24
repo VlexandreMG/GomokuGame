@@ -25,6 +25,10 @@ namespace GomokuGame.ui.organisms
         public bool IsBombSelectionActive { get; private set; }
         public bool BombFromLeft { get; private set; }
         public int? SelectedBombRowOneBased { get; private set; }
+        private bool _hasTransientShotMarker;
+        private Point _transientShotCell;
+        private Color _transientShotColor;
+        private float _transientShotOpacity;
 
         /// <summary>
         /// Aucun contrôle enfant à créer: tout est dessiné dans OnPaint.
@@ -80,6 +84,7 @@ namespace GomokuGame.ui.organisms
             DrawBombCannons(g);
             DrawAllPoints(g);
             DrawWinningLine(g);
+            DrawTransientShotMarker(g);
         }
 
         /// <summary>
@@ -313,6 +318,75 @@ namespace GomokuGame.ui.organisms
             return new Point(
                 BoardMargin + (boardPoint.X * CellSize),
                 BoardMargin + (boardPoint.Y * CellSize));
+        }
+
+        /// <summary>
+        /// Affiche une croix éphémère sur la case ciblée par un tir canon.
+        /// </summary>
+        public void ShowTransientShotMarker(Point boardCell, Color shooterColor)
+        {
+            _hasTransientShotMarker = true;
+            _transientShotCell = boardCell;
+            _transientShotColor = shooterColor;
+            _transientShotOpacity = 1f;
+            Invalidate();
+        }
+
+        /// <summary>
+        /// Fait décroître l'opacité de la croix éphémère. Retourne true si elle est encore visible.
+        /// </summary>
+        public bool FadeTransientShotMarker()
+        {
+            if (!_hasTransientShotMarker)
+            {
+                return false;
+            }
+
+            _transientShotOpacity -= 0.2f;
+            if (_transientShotOpacity <= 0f)
+            {
+                _hasTransientShotMarker = false;
+                _transientShotOpacity = 0f;
+                Invalidate();
+                return false;
+            }
+
+            Invalidate();
+            return true;
+        }
+
+        /// <summary>
+        /// Efface immédiatement la croix de tir éphémère.
+        /// </summary>
+        public void ClearTransientShotMarker()
+        {
+            _hasTransientShotMarker = false;
+            _transientShotOpacity = 0f;
+            Invalidate();
+        }
+
+        private void DrawTransientShotMarker(Graphics g)
+        {
+            if (!_hasTransientShotMarker || _transientShotOpacity <= 0f)
+            {
+                return;
+            }
+
+            Point center = ToPixel(_transientShotCell);
+            int alpha = (int)Math.Round(255 * _transientShotOpacity);
+            if (alpha < 0)
+            {
+                alpha = 0;
+            }
+            else if (alpha > 255)
+            {
+                alpha = 255;
+            }
+
+            using Pen crossPen = new Pen(Color.FromArgb(alpha, _transientShotColor), 3);
+            int halfSize = Math.Max(6, CellSize / 5);
+            g.DrawLine(crossPen, center.X - halfSize, center.Y - halfSize, center.X + halfSize, center.Y + halfSize);
+            g.DrawLine(crossPen, center.X - halfSize, center.Y + halfSize, center.X + halfSize, center.Y - halfSize);
         }
 
         /// <summary>
