@@ -1,5 +1,6 @@
 using System.Windows.Forms;
 using GomokuGame.data;
+using GomokuGame.service;
 
 namespace GomokuGame.ui.atoms;
 
@@ -160,8 +161,8 @@ public static class GameSetupMenu
 
     private static void ShowSavedGamesList(IWin32Window? owner)
     {
-        DatabaseManager databaseManager = new DatabaseManager();
-        var savedGames = databaseManager.GetSavedGames();
+        SavedGameService savedGameService = new SavedGameService(new DatabaseManager());
+        var savedGames = savedGameService.GetSavedGames();
 
         using Form listDialog = new Form();
         listDialog.Text = "Parties sauvegardees";

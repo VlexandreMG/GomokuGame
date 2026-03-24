@@ -5,6 +5,8 @@ using System.Drawing;
 using System.Windows.Forms;
 using GomokuGame.core;
 using GomokuGame.core.events;
+using GomokuGame.data;
+using GomokuGame.service;
 using GomokuGame.ui.organisms;
 using GomokuGame.ui.atoms;
 
@@ -25,6 +27,10 @@ namespace GomokuGame.ui
         private int _gridSize = 15;
         private int _player1Score;
         private int _player2Score;
+        private int _currentPartieId;
+        private int _turnNumber = 1;
+        private PartieService _partieService = null!;
+        private ActionService _actionService = null!;
         private readonly HashSet<string> _awardedLineSignatures = new HashSet<string>();
         private readonly HashSet<string> _displayedLineSignatures = new HashSet<string>();
 
@@ -88,6 +94,10 @@ namespace GomokuGame.ui
 
         private void Initialize()
         {
+            DatabaseManager databaseManager = new DatabaseManager();
+            GenericRepository repository = databaseManager.Repository;
+            _partieService = new PartieService(repository);
+            _actionService = new ActionService(repository);
             TerminalLogger.Action("Form initialized, waiting for startup menu");
         }
 
@@ -151,6 +161,13 @@ namespace GomokuGame.ui
 
                 SyncWinningLines(newLines);
 
+                _actionService.TryRecordPointAction(
+                    _currentPartieId,
+                    _turnDetector.CurrentPlayer,
+                    placedStone.X,
+                    placedStone.Y,
+                    _turnNumber);
+
                 _board.Invalidate(); // Force à redessiner le plateau (OnPaint)
                 TerminalLogger.Action("Board invalidated for repaint");
                 MoveToNextTurn();
@@ -172,6 +189,7 @@ namespace GomokuGame.ui
             }
 
             _turnDetector.AdvanceTurn();
+            _turnNumber++;
             PromptCurrentTurnAction();
         }
 
@@ -247,6 +265,14 @@ namespace GomokuGame.ui
 
             SyncPointsFromEngine();
             SyncWinningLines(currentWinningLines);
+
+            _actionService.TryRecordBombAction(
+                _currentPartieId,
+                _turnDetector.CurrentPlayer,
+                targetCell.X,
+                targetCell.Y,
+                _turnNumber);
+
             _board.Invalidate();
             TerminalLogger.Action("Board synchronized after bomb action");
 
@@ -410,6 +436,8 @@ namespace GomokuGame.ui
 
             _player1Score = 0;
             _player2Score = 0;
+            _turnNumber = 1;
+            _currentPartieId = 0;
             _awardedLineSignatures.Clear();
             _displayedLineSignatures.Clear();
 
@@ -422,11 +450,12 @@ namespace GomokuGame.ui
             _turnDetector = new TurnDetector(player1Name, player2Name);
             _etatPartie = new EtatPartie();
             _etatPartie.StartGame();
+            _currentPartieId = _partieService.TryCreatePartie(player1Name, player2Name, gridSize);
             _pendingBombRowOneBased = null;
             _isGameInitialized = true;
             _endGameButton.Enabled = true;
 
-            TerminalLogger.Action($"Game setup complete: P1={player1Name} (Blue), P2={player2Name} (Red), grid={gridSize}");
+            TerminalLogger.Action($"Game setup complete: P1={player1Name} (Blue), P2={player2Name} (Red), grid={gridSize}, partieId={_currentPartieId}");
             _board.Invalidate();
             PromptCurrentTurnAction();
         }

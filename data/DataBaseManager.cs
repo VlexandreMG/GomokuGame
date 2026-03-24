@@ -9,27 +9,25 @@ namespace GomokuGame.data
     public class DatabaseManager
     {
         // Remplace par tes vrais identifiants Docker
-        private string _connectionString = 
+        private readonly string _connectionString = 
             "Host=127.0.0.1;" +
             "Port=5432;" +
             "Username=postgres;" +
             "Password=postgres;" +
             "Database=gomoku_db";
 
+        public string ConnectionString => _connectionString;
+        public GenericRepository Repository => new GenericRepository(_connectionString);
+
         public void TestConnection()
         {
-            try
+            if (Repository.TestConnection(out string? error))
             {
-                using (var conn = new NpgsqlConnection(_connectionString))
-                {
-                    conn.Open();
-                    Console.WriteLine("Connexion à Postgres réussie !");
-                }
+                Console.WriteLine("Connexion à Postgres réussie !");
+                return;
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Erreur de connexion : {ex.Message}");
-            }
+
+            Console.WriteLine($"Erreur de connexion : {error}");
         }
 
         public IReadOnlyList<string> GetSavedGames()

@@ -69,3 +69,9 @@ on fait une regle de trois pour les autres puissances.
 J'ai oublier de preciser que lorsqu'il y a des virgule dans le calcule on prend la partie entiere minimum:
 par exemple si on a une valeur de 8.5 alors on prend 8
 Encore quelque chose a arranger un peu, enfaite lorsqu'un joueur choisi de tirer au canon, qu'il rate ou qu'il fait mouche, on passe au tour du joueur suivant
+
+16 - Pour ce projet, enfaite garde le fonctionnement et les logique deja dit auparavant. 
+Cependant , tu vas modifier la structure de projet , c'est à dire , que pour chaque table dans base.sql 
+tu vas créer des modèles dans le package model , un repository généralisé pour toutes les modèles (j'ai dit un seul pour tous), 
+des services dans le package service où l'on mettra toutes les logiques métiers. 
+Fais ça de manière à ne pas cassser le code mais de manière à ce que cela soit plus lisible (Pour des dev habiuter à java)
