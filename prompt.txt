@@ -87,3 +87,8 @@ Et , simplifie l'ecriture du code pour qu'il soit plus lisible et respecte le si
 
 20 - Je veux que tu me fasse un fichier.md qui explique le flux de tous le code 
 En allant du Menu vers la fin .
+
+21 - Par exemple , le joueur 1 a utilisé la bomb , il enlève le point du joueur 2 
+Puis , le joueur 2 utilise bomb sur l'endroit où était placé son ancien point. 
+Le point se remet sur cette place.
+Et si y a déja un point du joueur 1 , alors ce point dégage et le nouveau point se pose.
