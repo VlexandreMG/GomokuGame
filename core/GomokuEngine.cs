@@ -65,12 +65,95 @@ public sealed class GomokuEngine
         _stones.Add(stone);
         _stonesByPosition[position] = stone;
         TerminalLogger.Action($"Stone placed: color={stoneColor.Name}, position=({x},{y}), moveIndex={_stones.Count}");
+        List<WinningLine> detectedLines = FindNewWinningLines(stone);
+        List<WinningLine> acceptedLines = FilterOutCrossingRegisteredLines(detectedLines);
 
         placedStone = stone;
-        newWinningLines = FindNewWinningLines(stone);
+        newWinningLines = acceptedLines;
         ProtectPointsFromNewWinningLines(newWinningLines);
         TerminalLogger.Action($"Scan finished for ({x},{y}), new winning lines={newWinningLines.Count}");
         return true;
+    }
+
+    private List<WinningLine> FilterOutCrossingRegisteredLines(IReadOnlyList<WinningLine> candidateLines)
+    {
+        if (candidateLines.Count == 0 || _registeredWinningLines.Count == 0)
+        {
+            return candidateLines.ToList();
+        }
+
+        List<WinningLine> accepted = new List<WinningLine>(candidateLines.Count);
+
+        foreach (WinningLine candidate in candidateLines)
+        {
+            bool crossesExistingLine = _registeredWinningLines.Any(existing =>
+                existing.Color != candidate.Color
+                && SegmentsIntersect(candidate.Start, candidate.End, existing.Start, existing.End));
+
+            if (crossesExistingLine)
+            {
+                TerminalLogger.Action($"Winning line ignored due to crossing: start=({candidate.Start.X},{candidate.Start.Y}), end=({candidate.End.X},{candidate.End.Y})");
+                continue;
+            }
+
+            accepted.Add(candidate);
+        }
+
+        return accepted;
+    }
+
+    private static bool SegmentsIntersect(Point a1, Point a2, Point b1, Point b2)
+    {
+        int o1 = Orientation(a1, a2, b1);
+        int o2 = Orientation(a1, a2, b2);
+        int o3 = Orientation(b1, b2, a1);
+        int o4 = Orientation(b1, b2, a2);
+
+        if (o1 != o2 && o3 != o4)
+        {
+            return true;
+        }
+
+        if (o1 == 0 && IsPointOnSegment(a1, b1, a2))
+        {
+            return true;
+        }
+
+        if (o2 == 0 && IsPointOnSegment(a1, b2, a2))
+        {
+            return true;
+        }
+
+        if (o3 == 0 && IsPointOnSegment(b1, a1, b2))
+        {
+            return true;
+        }
+
+        if (o4 == 0 && IsPointOnSegment(b1, a2, b2))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static int Orientation(Point p, Point q, Point r)
+    {
+        long cross = ((long)q.Y - p.Y) * ((long)r.X - q.X) - ((long)q.X - p.X) * ((long)r.Y - q.Y);
+        if (cross == 0)
+        {
+            return 0;
+        }
+
+        return cross > 0 ? 1 : 2;
+    }
+
+    private static bool IsPointOnSegment(Point p, Point q, Point r)
+    {
+        return q.X <= Math.Max(p.X, r.X)
+            && q.X >= Math.Min(p.X, r.X)
+            && q.Y <= Math.Max(p.Y, r.Y)
+            && q.Y >= Math.Min(p.Y, r.Y);
     }
 
     /// <summary>
