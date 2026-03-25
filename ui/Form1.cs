@@ -598,7 +598,7 @@ namespace GomokuGame.ui
             _board.WinningLines.Clear();
             _board.DisableBombSelection();
 
-            _engine = new GomokuEngine(_gridSize);
+            _engine = new GomokuEngine(_gridSize, _gridSize);
             _turnDetector = new TurnDetector(_player1Name, _player2Name);
             _etatPartie = new EtatPartie();
             _etatPartie.StartGame();

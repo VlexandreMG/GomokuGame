@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 
 namespace GomokuGame.core;
 
@@ -9,6 +10,8 @@ public sealed class GomokuEngine
     private readonly Dictionary<Point, GameStone> _stonesByPosition = new Dictionary<Point, GameStone>();
     private readonly List<GameStone> _stones = new List<GameStone>();
     private readonly HashSet<Point> _protectedWinningPoints = new HashSet<Point>();
+    private readonly List<WinningLine> _registeredWinningLines = new List<WinningLine>();
+    private readonly Dictionary<(int Dx, int Dy), HashSet<Point>> _linePointsByDirection = new Dictionary<(int Dx, int Dy), HashSet<Point>>();
     private readonly (int Dx, int Dy)[] _scanDirections =
     {
         (1, 0),
@@ -17,16 +20,22 @@ public sealed class GomokuEngine
         (1, -1)
     };
 
-    public int GridSize { get; }
+    public int GridWidth { get; }
+    public int GridHeight { get; }
     public IReadOnlyList<GameStone> Stones => _stones;
 
     /// <summary>
     /// Initialise le moteur avec une taille de grille fixe.
     /// </summary>
-    public GomokuEngine(int gridSize)
+    public GomokuEngine(int gridWidth, int gridHeight)
     {
-        GridSize = gridSize;
-        TerminalLogger.Action($"Engine created with grid size {GridSize}");
+        GridWidth = gridWidth;
+        GridHeight = gridHeight;
+        foreach (var direction in _scanDirections)
+        {
+            _linePointsByDirection[direction] = new HashSet<Point>();
+        }
+        TerminalLogger.Action($"Engine created with grid size {GridWidth}x{GridHeight}");
     }
 
     /// <summary>
@@ -76,9 +85,9 @@ public sealed class GomokuEngine
 
         TerminalLogger.Action($"TryLaunchBomb called: fromLeft={fromLeft}, line={lineOneBased}, power={power}, shooterColor={shooterColor.Name}");
 
-        if (lineOneBased < 1 || lineOneBased > GridSize)
+        if (lineOneBased < 1 || lineOneBased > GridHeight)
         {
-            TerminalLogger.Action($"Bomb rejected: line {lineOneBased} is out of range 1..{GridSize}");
+            TerminalLogger.Action($"Bomb rejected: line {lineOneBased} is out of range 1..{GridHeight}");
             return false;
         }
 
@@ -89,7 +98,7 @@ public sealed class GomokuEngine
         }
 
         // Mapping puissance (1..9) -> colonne cible via règle de trois.
-        double mappedExact = (power * (double)GridSize) / 9d;
+        double mappedExact = (power * (double)GridWidth) / 9d;
         int mappedOneBased = (int)Math.Floor(mappedExact);
         if (mappedOneBased < 1)
         {
@@ -159,12 +168,20 @@ public sealed class GomokuEngine
         // Une fois une ligne validée, ses 5 points deviennent invulnérables aux bombes.
         foreach (WinningLine line in newWinningLines)
         {
+            _registeredWinningLines.Add(line);
+
+            int directionDx = Math.Sign(line.End.X - line.Start.X);
+            int directionDy = Math.Sign(line.End.Y - line.Start.Y);
+            (int Dx, int Dy) directionKey = NormalizeDirection(directionDx, directionDy);
+
             foreach (Point p in EnumerateLinePoints(line))
             {
                 if (_protectedWinningPoints.Add(p))
                 {
                     TerminalLogger.Action($"Protected point registered from winning line: ({p.X},{p.Y})");
                 }
+
+                _linePointsByDirection[directionKey].Add(p);
             }
         }
     }
@@ -193,52 +210,8 @@ public sealed class GomokuEngine
     /// </summary>
     public IReadOnlyList<WinningLine> GetWinningLinesExactFive()
     {
-        // Recalcul complet de toutes les lignes visibles de longueur exactement 5.
-        var lines = new List<WinningLine>();
-
-        foreach (GameStone stone in _stones)
-        {
-            foreach (var (dx, dy) in _scanDirections)
-            {
-                int prevX = stone.X - dx;
-                int prevY = stone.Y - dy;
-                if (HasSameColorStoneAt(prevX, prevY, stone.Color))
-                {
-                    continue;
-                }
-
-                int x = stone.X;
-                int y = stone.Y;
-                var runPoints = new List<Point>
-                {
-                    new Point(stone.X, stone.Y)
-                };
-
-                while (true)
-                {
-                    x += dx;
-                    y += dy;
-                    if (!HasSameColorStoneAt(x, y, stone.Color))
-                    {
-                        break;
-                    }
-
-                    runPoints.Add(new Point(x, y));
-                }
-
-                if (runPoints.Count < 5)
-                {
-                    continue;
-                }
-
-                for (int startIndex = 0; startIndex + 4 < runPoints.Count; startIndex += 5)
-                {
-                    lines.Add(new WinningLine(runPoints[startIndex], runPoints[startIndex + 4], stone.Color));
-                }
-            }
-        }
-
-        return lines;
+        // Retourne uniquement les lignes effectivement validées au fil des coups.
+        return _registeredWinningLines.ToList();
     }
 
     /// <summary>
@@ -252,23 +225,71 @@ public sealed class GomokuEngine
         foreach (var (dx, dy) in _scanDirections)
         {
             List<Point> alignedRun = CollectAlignedRunPoints(originStone, dx, dy);
-            TerminalLogger.Action($"Direction ({dx},{dy}) -> alignedRun={alignedRun.Count}");
+            int originIndex = alignedRun.FindIndex(p => p.X == originStone.X && p.Y == originStone.Y);
+            TerminalLogger.Action($"Direction ({dx},{dy}) -> alignedRun={alignedRun.Count}, originIndex={originIndex}");
 
-            if (alignedRun.Count < 5)
+            if (alignedRun.Count < 5 || originIndex < 0)
             {
                 continue;
             }
 
             for (int startIndex = 0; startIndex + 4 < alignedRun.Count; startIndex += 5)
             {
+                int endIndex = startIndex + 4;
+                bool includesOrigin = originIndex >= startIndex && originIndex <= endIndex;
+                if (!includesOrigin)
+                {
+                    continue;
+                }
+
+                if (OverlapsExistingLineInSameDirection(alignedRun, startIndex, endIndex, dx, dy))
+                {
+                    TerminalLogger.Action($"5-block rejected: overlaps existing line in same direction (startIndex={startIndex}, endIndex={endIndex})");
+                    continue;
+                }
+
                 Point start = alignedRun[startIndex];
-                Point end = alignedRun[startIndex + 4];
+                Point end = alignedRun[endIndex];
                 lines.Add(new WinningLine(start, end, originStone.Color));
-                TerminalLogger.Action($"5-block line found: start=({start.X},{start.Y}), end=({end.X},{end.Y}), color={originStone.Color.Name}");
+                TerminalLogger.Action($"Exact 5-line found: start=({start.X},{start.Y}), end=({end.X},{end.Y}), color={originStone.Color.Name}");
             }
         }
 
         return lines;
+    }
+
+    private bool OverlapsExistingLineInSameDirection(List<Point> points, int startIndex, int endIndex, int dx, int dy)
+    {
+        // Interdit de réutiliser des points d'une ligne déjà validée dans la même direction.
+        (int Dx, int Dy) key = NormalizeDirection(dx, dy);
+        HashSet<Point> existingPoints = _linePointsByDirection[key];
+
+        for (int i = startIndex; i <= endIndex; i++)
+        {
+            Point p = points[i];
+            if (existingPoints.Contains(p))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private (int Dx, int Dy) NormalizeDirection(int dx, int dy)
+    {
+        // Canonicalisation: (1,0), (0,1), (1,1), (1,-1)
+        if (dx < 0)
+        {
+            dx = -dx;
+            dy = -dy;
+        }
+        else if (dx == 0 && dy < 0)
+        {
+            dy = -dy;
+        }
+
+        return (dx, dy);
     }
 
     /// <summary>
@@ -310,7 +331,7 @@ public sealed class GomokuEngine
     /// </summary>
     private bool IsInsideBoard(int x, int y)
     {
-        return x >= 0 && x < GridSize && y >= 0 && y < GridSize;
+        return x >= 0 && x < GridWidth && y >= 0 && y < GridHeight;
     }
 
     /// <summary>
@@ -332,7 +353,7 @@ public sealed class GomokuEngine
     /// </summary>
     private Point ResolveBombTarget(bool fromLeft, int lineOneBased, int mappedOneBased)
     {
-        int targetX = fromLeft ? mappedOneBased - 1 : GridSize - mappedOneBased;
+        int targetX = fromLeft ? mappedOneBased - 1 : GridWidth - mappedOneBased;
         int targetY = lineOneBased - 1;
         return new Point(targetX, targetY);
     }
