@@ -11,7 +11,7 @@ public sealed class GomokuEngine
     private readonly List<GameStone> _stones = new List<GameStone>();
     private readonly HashSet<Point> _protectedWinningPoints = new HashSet<Point>();
     private readonly List<WinningLine> _registeredWinningLines = new List<WinningLine>();
-    private readonly Dictionary<Point, Color> _revivableOwnerByPosition = new Dictionary<Point, Color>();
+    private readonly Dictionary<Point, Dictionary<Color, int>> _revivableCreditsByPosition = new Dictionary<Point, Dictionary<Color, int>>();
     private readonly Dictionary<(int Dx, int Dy), HashSet<Point>> _linePointsByDirection = new Dictionary<(int Dx, int Dy), HashSet<Point>>();
     private readonly (int Dx, int Dy)[] _scanDirections =
     {
@@ -216,8 +216,14 @@ public sealed class GomokuEngine
             return true;
         }
 
-        if (_revivableOwnerByPosition.TryGetValue(targetCell, out Color revivableOwnerColor)
-            && revivableOwnerColor == shooterColor)
+        if (_stonesByPosition.TryGetValue(targetCell, out GameStone? ownStoneAtTarget) && ownStoneAtTarget.Color == shooterColor)
+        {
+            TerminalLogger.Action($"Bomb ignored at ({targetCell.X},{targetCell.Y}): target is shooter's own stone ({ownStoneAtTarget.Color.Name})");
+            currentWinningLines = GetWinningLinesExactFive();
+            return true;
+        }
+
+        if (TryConsumeRevivableCredit(targetCell, shooterColor))
         {
             if (_stonesByPosition.TryGetValue(targetCell, out GameStone? currentStone))
             {
@@ -226,6 +232,7 @@ public sealed class GomokuEngine
                     _stonesByPosition.Remove(targetCell);
                     _stones.Remove(currentStone);
                     removedStone = currentStone;
+                    AddRevivableCredit(targetCell, currentStone.Color);
                     TerminalLogger.Action($"Bomb recall: removed occupying enemy stone at ({targetCell.X},{targetCell.Y}) before restoring owner stone");
                 }
             }
@@ -238,24 +245,16 @@ public sealed class GomokuEngine
                 TerminalLogger.Action($"Bomb recall: restored owner stone at ({targetCell.X},{targetCell.Y}) color={shooterColor.Name}");
             }
 
-            _revivableOwnerByPosition.Remove(targetCell);
             currentWinningLines = GetWinningLinesExactFive();
             return true;
         }
 
         if (_stonesByPosition.TryGetValue(targetCell, out GameStone? hitStone))
         {
-            if (hitStone.Color == shooterColor)
-            {
-                TerminalLogger.Action($"Bomb ignored at ({targetCell.X},{targetCell.Y}): target is shooter's own stone ({hitStone.Color.Name})");
-                currentWinningLines = GetWinningLinesExactFive();
-                return true;
-            }
-
             _stonesByPosition.Remove(targetCell);
             _stones.Remove(hitStone);
             removedStone = hitStone;
-            _revivableOwnerByPosition[targetCell] = hitStone.Color;
+            AddRevivableCredit(targetCell, hitStone.Color);
             TerminalLogger.Action($"Bomb hit: stone removed at ({targetCell.X},{targetCell.Y}) color={hitStone.Color.Name}");
         }
         else
@@ -265,6 +264,50 @@ public sealed class GomokuEngine
 
         currentWinningLines = GetWinningLinesExactFive();
         TerminalLogger.Action($"Winning lines recomputed after bomb: count={currentWinningLines.Count}");
+        return true;
+    }
+
+    private void AddRevivableCredit(Point position, Color ownerColor)
+    {
+        if (!_revivableCreditsByPosition.TryGetValue(position, out Dictionary<Color, int>? creditsByColor))
+        {
+            creditsByColor = new Dictionary<Color, int>();
+            _revivableCreditsByPosition[position] = creditsByColor;
+        }
+
+        if (!creditsByColor.TryGetValue(ownerColor, out int existingCredits))
+        {
+            existingCredits = 0;
+        }
+
+        creditsByColor[ownerColor] = existingCredits + 1;
+    }
+
+    private bool TryConsumeRevivableCredit(Point position, Color ownerColor)
+    {
+        if (!_revivableCreditsByPosition.TryGetValue(position, out Dictionary<Color, int>? creditsByColor))
+        {
+            return false;
+        }
+
+        if (!creditsByColor.TryGetValue(ownerColor, out int availableCredits) || availableCredits <= 0)
+        {
+            return false;
+        }
+
+        if (availableCredits == 1)
+        {
+            creditsByColor.Remove(ownerColor);
+            if (creditsByColor.Count == 0)
+            {
+                _revivableCreditsByPosition.Remove(position);
+            }
+        }
+        else
+        {
+            creditsByColor[ownerColor] = availableCredits - 1;
+        }
+
         return true;
     }
 
