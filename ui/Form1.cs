@@ -288,7 +288,7 @@ namespace GomokuGame.ui
 
             bool fromLeft = _turnDetector.CurrentPlayer == _turnDetector.Player1;
             Color shooterColor = fromLeft ? Color.Blue : Color.Red;
-            bool success = _engine.TryLaunchBomb(fromLeft, _pendingBombRowOneBased.Value, power.Value, shooterColor, out Point targetCell, out GameStone? removedStone, out bool hitProtectedWinningPoint, out IReadOnlyList<WinningLine> currentWinningLines);
+            bool success = _engine.TryLaunchBomb(fromLeft, _pendingBombRowOneBased.Value, power.Value, shooterColor, out Point targetCell, out GameStone? removedStone, out bool placedShooterStone, out bool hitProtectedWinningPoint, out IReadOnlyList<WinningLine> currentWinningLines);
             TerminalLogger.Action($"Bomb power received from keyboard: {power.Value}");
 
             if (!success)
@@ -302,9 +302,20 @@ namespace GomokuGame.ui
             {
                 TerminalLogger.Action($"Bomb had no effect: ({targetCell.X},{targetCell.Y}) is protected by a winning line");
             }
+            else if (placedShooterStone)
+            {
+                if (removedStone is not null)
+                {
+                    TerminalLogger.Action($"Bomb replaced stone at ({targetCell.X},{targetCell.Y}) with current player's stone");
+                }
+                else
+                {
+                    TerminalLogger.Action($"Bomb restored current player's stone at ({targetCell.X},{targetCell.Y})");
+                }
+            }
             else if (removedStone is null)
             {
-                TerminalLogger.Action($"Bomb had no effect at ({targetCell.X},{targetCell.Y}) (empty cell or own stone)");
+                TerminalLogger.Action($"Bomb had no effect at ({targetCell.X},{targetCell.Y})");
             }
             else
             {
@@ -621,7 +632,7 @@ namespace GomokuGame.ui
                 }
                 else if (string.Equals(action.TypeAction, "BOMBE", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (_engine.TryApplyBombAtTarget(actorColor, new Point(action.X, action.Y), out GameStone? replayRemovedStone, out bool replayHitProtectedPoint, out IReadOnlyList<WinningLine> currentWinningLines))
+                    if (_engine.TryApplyBombAtTarget(actorColor, new Point(action.X, action.Y), out GameStone? replayRemovedStone, out bool replayPlacedShooterStone, out bool replayHitProtectedPoint, out IReadOnlyList<WinningLine> currentWinningLines))
                     {
                         SyncWinningLines(currentWinningLines);
                     }

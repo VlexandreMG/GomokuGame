@@ -10,6 +10,7 @@ public sealed class GomokuEngine
     private readonly Dictionary<Point, GameStone> _stonesByPosition = new Dictionary<Point, GameStone>();
     private readonly List<GameStone> _stones = new List<GameStone>();
     private readonly HashSet<Point> _protectedWinningPoints = new HashSet<Point>();
+    private readonly Dictionary<Point, Color> _restorableBombPointsByOwner = new Dictionary<Point, Color>();
     private readonly List<WinningLine> _registeredWinningLines = new List<WinningLine>();
     private readonly Dictionary<(int Dx, int Dy), HashSet<Point>> _linePointsByDirection = new Dictionary<(int Dx, int Dy), HashSet<Point>>();
     private readonly (int Dx, int Dy)[] _scanDirections =
@@ -64,6 +65,7 @@ public sealed class GomokuEngine
         var stone = new GameStone(x, y, stoneColor);
         _stones.Add(stone);
         _stonesByPosition[position] = stone;
+        _restorableBombPointsByOwner.Remove(position);
         TerminalLogger.Action($"Stone placed: color={stoneColor.Name}, position=({x},{y}), moveIndex={_stones.Count}");
 
         placedStone = stone;
@@ -76,10 +78,11 @@ public sealed class GomokuEngine
     /// <summary>
     /// Calcule la case ciblée par une bombe (ligne + puissance), puis applique l'impact.
     /// </summary>
-    public bool TryLaunchBomb(bool fromLeft, int lineOneBased, int power, Color shooterColor, out Point targetCell, out GameStone? removedStone, out bool hitProtectedWinningPoint, out IReadOnlyList<WinningLine> currentWinningLines)
+    public bool TryLaunchBomb(bool fromLeft, int lineOneBased, int power, Color shooterColor, out Point targetCell, out GameStone? removedStone, out bool placedShooterStone, out bool hitProtectedWinningPoint, out IReadOnlyList<WinningLine> currentWinningLines)
     {
         targetCell = Point.Empty;
         removedStone = null;
+        placedShooterStone = false;
         hitProtectedWinningPoint = false;
         currentWinningLines = new List<WinningLine>();
 
@@ -109,16 +112,17 @@ public sealed class GomokuEngine
         targetCell = ResolveBombTarget(fromLeft, lineOneBased, mappedOneBased);
         TerminalLogger.Action($"Bomb target resolved to ({targetCell.X},{targetCell.Y})");
 
-        return TryApplyBombAtTarget(shooterColor, targetCell, out removedStone, out hitProtectedWinningPoint, out currentWinningLines);
+        return TryApplyBombAtTarget(shooterColor, targetCell, out removedStone, out placedShooterStone, out hitProtectedWinningPoint, out currentWinningLines);
     }
 
     /// <summary>
     /// Applique directement une bombe sur une case donnée (utile pour replay/chargement).
     /// </summary>
-    public bool TryApplyBombAtTarget(Color shooterColor, Point targetCell, out GameStone? removedStone, out bool hitProtectedWinningPoint, out IReadOnlyList<WinningLine> currentWinningLines)
+    public bool TryApplyBombAtTarget(Color shooterColor, Point targetCell, out GameStone? removedStone, out bool placedShooterStone, out bool hitProtectedWinningPoint, out IReadOnlyList<WinningLine> currentWinningLines)
     {
         // API de replay: applique un tir sur une case déjà calculée.
         removedStone = null;
+        placedShooterStone = false;
         hitProtectedWinningPoint = false;
         currentWinningLines = new List<WinningLine>();
 
@@ -140,7 +144,7 @@ public sealed class GomokuEngine
         {
             if (hitStone.Color == shooterColor)
             {
-                TerminalLogger.Action($"Bomb ignored at ({targetCell.X},{targetCell.Y}): target is shooter's own stone ({hitStone.Color.Name})");
+                TerminalLogger.Action($"Bomb landed at ({targetCell.X},{targetCell.Y}): shooter's stone already present");
                 currentWinningLines = GetWinningLinesExactFive();
                 return true;
             }
@@ -148,11 +152,29 @@ public sealed class GomokuEngine
             _stonesByPosition.Remove(targetCell);
             _stones.Remove(hitStone);
             removedStone = hitStone;
-            TerminalLogger.Action($"Bomb hit: stone removed at ({targetCell.X},{targetCell.Y}) color={hitStone.Color.Name}");
+            _restorableBombPointsByOwner[targetCell] = hitStone.Color;
+            TerminalLogger.Action($"Bomb hit: opponent stone removed at ({targetCell.X},{targetCell.Y}) color={hitStone.Color.Name}");
+            currentWinningLines = GetWinningLinesExactFive();
+            TerminalLogger.Action($"Winning lines recomputed after bomb: count={currentWinningLines.Count}");
+            return true;
+        }
+
+        if (_restorableBombPointsByOwner.TryGetValue(targetCell, out Color restorableOwnerColor) && restorableOwnerColor == shooterColor)
+        {
+            GameStone restoredStone = new GameStone(targetCell.X, targetCell.Y, shooterColor);
+            _stonesByPosition[targetCell] = restoredStone;
+            _stones.Add(restoredStone);
+            _restorableBombPointsByOwner.Remove(targetCell);
+            placedShooterStone = true;
+            TerminalLogger.Action($"Bomb restore applied: removed owner's stone restored at ({targetCell.X},{targetCell.Y}) color={shooterColor.Name}");
+
+            IReadOnlyList<WinningLine> newWinningLines = FindNewWinningLines(restoredStone);
+            ProtectPointsFromNewWinningLines(newWinningLines);
+            TerminalLogger.Action($"Bomb restore scan finished at ({targetCell.X},{targetCell.Y}), new winning lines={newWinningLines.Count}");
         }
         else
         {
-            TerminalLogger.Action("Bomb miss: no stone at target cell");
+            TerminalLogger.Action("Bomb miss: no removable stone and no restorable stone for shooter at target cell");
         }
 
         currentWinningLines = GetWinningLinesExactFive();

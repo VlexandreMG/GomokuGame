@@ -92,3 +92,7 @@ En allant du Menu vers la fin .
 Puis , le joueur 2 utilise bomb sur l'endroit où était placé son ancien point. 
 Le point se remet sur cette place.
 Et si y a déja un point du joueur 1 , alors ce point dégage et le nouveau point se pose.
+
+22 - Petit changement , la fonctionnalité bomb peut enlever pour la première fois , 
+mais le joueur dont le point fut enlevé peut le remettre via bomb , pas que lorsqu'il utilise la bomb ,
+il remet direct le point . Arrange stp 
