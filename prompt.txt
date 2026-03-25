@@ -96,3 +96,8 @@ Et si y a déja un point du joueur 1 , alors ce point dégage et le nouveau poin
 22 - Petit changement , la fonctionnalité bomb peut enlever pour la première fois , 
 mais le joueur dont le point fut enlevé peut le remettre via bomb , pas que lorsqu'il utilise la bomb ,
 il remet direct le point . Arrange stp 
+
+23 - le 22 marche , mais , par exemple , la partie continue , 
+et que le joueur 2 qui a utilisé la bomb remet un point a l'endroit où il a enlevé le point du joueur 1 
+le joueur 1 decide d'envoyer une bombe à l'endroit où le nouveau point du joueur 2 est posé ,
+le point du joueur 2 se fera remplacé par le nouveau point du joueur 1 .  

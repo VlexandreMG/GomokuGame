@@ -11,6 +11,7 @@ public sealed class GomokuEngine
     private readonly List<GameStone> _stones = new List<GameStone>();
     private readonly HashSet<Point> _protectedWinningPoints = new HashSet<Point>();
     private readonly Dictionary<Point, Color> _restorableBombPointsByOwner = new Dictionary<Point, Color>();
+    private readonly HashSet<Point> _stonesPlacedByBombRestore = new HashSet<Point>();
     private readonly List<WinningLine> _registeredWinningLines = new List<WinningLine>();
     private readonly Dictionary<(int Dx, int Dy), HashSet<Point>> _linePointsByDirection = new Dictionary<(int Dx, int Dy), HashSet<Point>>();
     private readonly (int Dx, int Dy)[] _scanDirections =
@@ -66,6 +67,7 @@ public sealed class GomokuEngine
         _stones.Add(stone);
         _stonesByPosition[position] = stone;
         _restorableBombPointsByOwner.Remove(position);
+        _stonesPlacedByBombRestore.Remove(position);
         TerminalLogger.Action($"Stone placed: color={stoneColor.Name}, position=({x},{y}), moveIndex={_stones.Count}");
 
         placedStone = stone;
@@ -149,11 +151,29 @@ public sealed class GomokuEngine
                 return true;
             }
 
+            bool hitBombRestoredStone = _stonesPlacedByBombRestore.Contains(targetCell);
             _stonesByPosition.Remove(targetCell);
             _stones.Remove(hitStone);
             removedStone = hitStone;
+            _stonesPlacedByBombRestore.Remove(targetCell);
             _restorableBombPointsByOwner[targetCell] = hitStone.Color;
             TerminalLogger.Action($"Bomb hit: opponent stone removed at ({targetCell.X},{targetCell.Y}) color={hitStone.Color.Name}");
+
+            if (hitBombRestoredStone)
+            {
+                // Règle 23: une pierre issue d'une restauration bombe est remplacée immédiatement.
+                GameStone replacingStone = new GameStone(targetCell.X, targetCell.Y, shooterColor);
+                _stonesByPosition[targetCell] = replacingStone;
+                _stones.Add(replacingStone);
+                _stonesPlacedByBombRestore.Add(targetCell);
+                placedShooterStone = true;
+                TerminalLogger.Action($"Bomb replacement applied at ({targetCell.X},{targetCell.Y}): shooter stone placed immediately");
+
+                IReadOnlyList<WinningLine> replacementLines = FindNewWinningLines(replacingStone);
+                ProtectPointsFromNewWinningLines(replacementLines);
+                TerminalLogger.Action($"Bomb replacement scan finished at ({targetCell.X},{targetCell.Y}), new winning lines={replacementLines.Count}");
+            }
+
             currentWinningLines = GetWinningLinesExactFive();
             TerminalLogger.Action($"Winning lines recomputed after bomb: count={currentWinningLines.Count}");
             return true;
@@ -165,6 +185,7 @@ public sealed class GomokuEngine
             _stonesByPosition[targetCell] = restoredStone;
             _stones.Add(restoredStone);
             _restorableBombPointsByOwner.Remove(targetCell);
+            _stonesPlacedByBombRestore.Add(targetCell);
             placedShooterStone = true;
             TerminalLogger.Action($"Bomb restore applied: removed owner's stone restored at ({targetCell.X},{targetCell.Y}) color={shooterColor.Name}");
 
