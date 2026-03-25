@@ -6,12 +6,18 @@ namespace GomokuGame.core;
 
 public sealed class GomokuEngine
 {
+    private enum BombStoneKind
+    {
+        OwnerRestored,
+        Replacement
+    }
+
     // Etat interne du moteur: positions occupées, historique des pierres, protection des lignes.
     private readonly Dictionary<Point, GameStone> _stonesByPosition = new Dictionary<Point, GameStone>();
     private readonly List<GameStone> _stones = new List<GameStone>();
     private readonly HashSet<Point> _protectedWinningPoints = new HashSet<Point>();
     private readonly Dictionary<Point, Color> _restorableBombPointsByOwner = new Dictionary<Point, Color>();
-    private readonly HashSet<Point> _stonesPlacedByBombRestore = new HashSet<Point>();
+    private readonly Dictionary<Point, BombStoneKind> _bombStoneKindsByPosition = new Dictionary<Point, BombStoneKind>();
     private readonly List<WinningLine> _registeredWinningLines = new List<WinningLine>();
     private readonly Dictionary<(int Dx, int Dy), HashSet<Point>> _linePointsByDirection = new Dictionary<(int Dx, int Dy), HashSet<Point>>();
     private readonly (int Dx, int Dy)[] _scanDirections =
@@ -66,8 +72,7 @@ public sealed class GomokuEngine
         var stone = new GameStone(x, y, stoneColor);
         _stones.Add(stone);
         _stonesByPosition[position] = stone;
-        _restorableBombPointsByOwner.Remove(position);
-        _stonesPlacedByBombRestore.Remove(position);
+        _bombStoneKindsByPosition.Remove(position);
         TerminalLogger.Action($"Stone placed: color={stoneColor.Name}, position=({x},{y}), moveIndex={_stones.Count}");
 
         placedStone = stone;
@@ -151,21 +156,24 @@ public sealed class GomokuEngine
                 return true;
             }
 
-            bool hitBombRestoredStone = _stonesPlacedByBombRestore.Contains(targetCell);
+            _bombStoneKindsByPosition.TryGetValue(targetCell, out BombStoneKind bombStoneKind);
+            _restorableBombPointsByOwner.TryGetValue(targetCell, out Color originalBombedOwnerColor);
+            bool hitReplacementStone = bombStoneKind == BombStoneKind.Replacement;
+            bool shooterReclaimsOriginalBombedSpot = originalBombedOwnerColor == shooterColor;
             _stonesByPosition.Remove(targetCell);
             _stones.Remove(hitStone);
             removedStone = hitStone;
-            _stonesPlacedByBombRestore.Remove(targetCell);
+            _bombStoneKindsByPosition.Remove(targetCell);
             _restorableBombPointsByOwner[targetCell] = hitStone.Color;
             TerminalLogger.Action($"Bomb hit: opponent stone removed at ({targetCell.X},{targetCell.Y}) color={hitStone.Color.Name}");
 
-            if (hitBombRestoredStone)
+            if (hitReplacementStone || shooterReclaimsOriginalBombedSpot)
             {
-                // Règle 23: une pierre issue d'une restauration bombe est remplacée immédiatement.
+                // Règle 23/25: certains impacts transforment immédiatement la case au profit du tireur.
                 GameStone replacingStone = new GameStone(targetCell.X, targetCell.Y, shooterColor);
                 _stonesByPosition[targetCell] = replacingStone;
                 _stones.Add(replacingStone);
-                _stonesPlacedByBombRestore.Add(targetCell);
+                _bombStoneKindsByPosition[targetCell] = BombStoneKind.Replacement;
                 placedShooterStone = true;
                 TerminalLogger.Action($"Bomb replacement applied at ({targetCell.X},{targetCell.Y}): shooter stone placed immediately");
 
@@ -185,7 +193,7 @@ public sealed class GomokuEngine
             _stonesByPosition[targetCell] = restoredStone;
             _stones.Add(restoredStone);
             _restorableBombPointsByOwner.Remove(targetCell);
-            _stonesPlacedByBombRestore.Add(targetCell);
+            _bombStoneKindsByPosition[targetCell] = BombStoneKind.OwnerRestored;
             placedShooterStone = true;
             TerminalLogger.Action($"Bomb restore applied: removed owner's stone restored at ({targetCell.X},{targetCell.Y}) color={shooterColor.Name}");
 

@@ -101,3 +101,13 @@ il remet direct le point . Arrange stp
 et que le joueur 2 qui a utilisé la bomb remet un point a l'endroit où il a enlevé le point du joueur 1 
 le joueur 1 decide d'envoyer une bombe à l'endroit où le nouveau point du joueur 2 est posé ,
 le point du joueur 2 se fera remplacé par le nouveau point du joueur 1 .  
+
+24 - le 23 marche , mais a exception près , je vais te raconter la simulation 
+le joueur 1 (bleu) pose un point , le joueur 2 (rouge) envoie une bomb sur ce point 
+le point du joueur 1 se fait enlever ; le joueur 1 envoie une bomb à l'endroit où le point fut enlever 
+le point du joueur 1 ré_apparaît ; (le problème) si le joueur 2 renvoie une bomb à cet endroit 
+le point du joueur 1 doit partir et non se transformer en point du joueur 2 
+Mais le joueur 1 renvoie une bomb sur le point du joueur 2 , et il se transforme en bleu , ça on ne change pas , c'est très bien 
+
+25 - Le problème de 24 est enlevé mais , je veux maintenant que lorsqu'il y a un point rouge (joueur 2) sur l'endroit où on a bombarder le point bleu (joueur 1)
+Si le joueur 1 decide de bombarder ce point rouge , il se transforme en bleu 
