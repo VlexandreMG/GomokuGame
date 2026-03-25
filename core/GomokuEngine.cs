@@ -11,6 +11,7 @@ public sealed class GomokuEngine
     private readonly List<GameStone> _stones = new List<GameStone>();
     private readonly HashSet<Point> _protectedWinningPoints = new HashSet<Point>();
     private readonly List<WinningLine> _registeredWinningLines = new List<WinningLine>();
+    private readonly Dictionary<Point, Color> _revivableOwnerByPosition = new Dictionary<Point, Color>();
     private readonly Dictionary<(int Dx, int Dy), HashSet<Point>> _linePointsByDirection = new Dictionary<(int Dx, int Dy), HashSet<Point>>();
     private readonly (int Dx, int Dy)[] _scanDirections =
     {
@@ -215,6 +216,33 @@ public sealed class GomokuEngine
             return true;
         }
 
+        if (_revivableOwnerByPosition.TryGetValue(targetCell, out Color revivableOwnerColor)
+            && revivableOwnerColor == shooterColor)
+        {
+            if (_stonesByPosition.TryGetValue(targetCell, out GameStone? currentStone))
+            {
+                if (currentStone.Color != shooterColor)
+                {
+                    _stonesByPosition.Remove(targetCell);
+                    _stones.Remove(currentStone);
+                    removedStone = currentStone;
+                    TerminalLogger.Action($"Bomb recall: removed occupying enemy stone at ({targetCell.X},{targetCell.Y}) before restoring owner stone");
+                }
+            }
+
+            if (!_stonesByPosition.ContainsKey(targetCell))
+            {
+                GameStone restoredStone = new GameStone(targetCell.X, targetCell.Y, shooterColor);
+                _stonesByPosition[targetCell] = restoredStone;
+                _stones.Add(restoredStone);
+                TerminalLogger.Action($"Bomb recall: restored owner stone at ({targetCell.X},{targetCell.Y}) color={shooterColor.Name}");
+            }
+
+            _revivableOwnerByPosition.Remove(targetCell);
+            currentWinningLines = GetWinningLinesExactFive();
+            return true;
+        }
+
         if (_stonesByPosition.TryGetValue(targetCell, out GameStone? hitStone))
         {
             if (hitStone.Color == shooterColor)
@@ -227,6 +255,7 @@ public sealed class GomokuEngine
             _stonesByPosition.Remove(targetCell);
             _stones.Remove(hitStone);
             removedStone = hitStone;
+            _revivableOwnerByPosition[targetCell] = hitStone.Color;
             TerminalLogger.Action($"Bomb hit: stone removed at ({targetCell.X},{targetCell.Y}) color={hitStone.Color.Name}");
         }
         else
