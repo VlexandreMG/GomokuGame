@@ -181,13 +181,9 @@ public sealed class GomokuEngine
         }
 
         // Mapping puissance (1..9) -> colonne cible via règle de trois.
+        int mappedOneBased = MapPowerToColumnOneBased(power);
         double mappedExact = (power * (double)GridWidth) / 9d;
-        int mappedOneBased = (int)Math.Floor(mappedExact);
-        if (mappedOneBased < 1)
-        {
-            mappedOneBased = 1;
-        }
-        TerminalLogger.Action($"Bomb power mapping: exact={mappedExact:F2}, floored={mappedOneBased}");
+        TerminalLogger.Action($"Bomb power mapping: exact={mappedExact:F2}, mapped={mappedOneBased}");
 
         targetCell = ResolveBombTarget(fromLeft, lineOneBased, mappedOneBased);
         TerminalLogger.Action($"Bomb target resolved to ({targetCell.X},{targetCell.Y})");
@@ -439,5 +435,21 @@ public sealed class GomokuEngine
         int targetX = fromLeft ? mappedOneBased - 1 : GridWidth - mappedOneBased;
         int targetY = lineOneBased - 1;
         return new Point(targetX, targetY);
+    }
+
+    private int MapPowerToColumnOneBased(int power)
+    {
+        int mappedOneBased = (int)Math.Floor((power * (double)GridWidth) / 9d);
+        if (mappedOneBased < 1)
+        {
+            return 1;
+        }
+
+        if (mappedOneBased > GridWidth)
+        {
+            return GridWidth;
+        }
+
+        return mappedOneBased;
     }
 }
