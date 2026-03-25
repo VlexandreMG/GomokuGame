@@ -1,4 +1,4 @@
--- Active: 1774366055843@@127.0.0.1@5432@gomoku_db
+-- Active: 1774370560108@@127.0.0.1@5432@gomoku_db@public
 CREATE DATABASE gomoku_db;
 
 USE gomoku_db;

@@ -84,3 +84,15 @@ c'est à dire , que le tour de l'adversaire ainsi que mon tour précedent sont a
 
 19 - Maintenant , je veux que tu mettes PLEIN de commentaire en français pour que ça soit plus facile à appréhender
 Et , simplifie l'ecriture du code pour qu'il soit plus lisible et respecte le single responsability 
+
+20 - Tres bien, sans rien casses de toutes les logiques qu'on a deja fais, je voudrais qu'on modifie le design
+et l'interaction homme machine de ce projet, tout d'abord, je coudrais que ca se fasse sur un plateau blanc avec des ligne noire.
+Ensuite, je voudrais que la taille du plateau soit variable de maniere a ce qu'on peut choisir une longueur et une largeur(toujours sans casser la logique)
+mais que par defaut ils sont egal a 10.
+Pour la taille de la fenetre pricipale, je voudrais qu'elle depende de la taille du plateau de jeux(et je voudrais que le plateau soit toujours au milieu de la fenetre),
+mais qu'enfaite, la fenetre occupe toute la hauteur de l'ecran, mais c'est juste la largeur qui depend du plateau.
+
+21 - Enfaite, je voudrais que tu ajoutes une axe des absisce allans de la droite vers la gauche sur la partie inferieur du plateau.
+Aussi, on va ameliorer l'interaction dans le jeux, enfaite on va changer les message d'alerte a chaque fin de tour, on va plutot mettre un message au dessus Du
+plateau qui indique a qui est le tour, et en bas on va mettre un boutton tirer pour le choix de tirer au canon et a coter un boutton placer point pour placer un point,
+aucune logique ne change, juste la maniere de jouer dans l'interface graphique.
