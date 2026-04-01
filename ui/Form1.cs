@@ -107,7 +107,7 @@ namespace GomokuGame.ui
 
         private void ApplyDefaultStyles()
         {
-            this.Text = "Gomoku Game";
+            this.Text = "Gomoku Game ETU4339";
         }
 
         private void SetupEventHandlers()

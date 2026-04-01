@@ -118,7 +118,7 @@ public static class GameSetupMenu
             Left = 150,
             Top = 158,
             Width = 254,
-            Minimum = 10,
+            Minimum = 5,
             Maximum = 25,
             Value = 15
         };

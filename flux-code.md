@@ -118,15 +118,45 @@ Flux:
 1. Le joueur choisit une ligne en cliquant un canon.
 2. Le joueur envoie la puissance via Ctrl + Numpad (1..9).
 3. Le moteur mappe la puissance vers une colonne (regle de trois + floor).
-4. Le moteur applique l'impact:
-   - si point protege par ligne gagnante: aucun effet
-   - si case vide: aucun effet
-   - si pierre adverse hors protection: suppression
-   - si pierre du tireur: ignore
-5. Le plateau est resynchronise.
-6. Les lignes/scores sont recalcules si necessaire.
-7. L'action bombe est enregistree en base et en historique local.
-8. Passage au joueur suivant (meme en cas d'echec du tir).
+4. Le moteur applique l'impact selon les regles finales 21 -> 25:
+  - si point protege par ligne gagnante: aucun effet
+  - si pierre du tireur: ignore
+  - si pierre adverse hors protection: suppression
+5. Quand une pierre adverse est supprimee, la case est memorisee comme "case bombardee" avec son proprietaire d'origine.
+6. Si plus tard cette case est vide et que le proprietaire d'origine tire une bombe dessus:
+  - sa pierre est restauree sur cette case
+  - cette pierre est marquee "OwnerRestored"
+7. Si une bombe touche une pierre marquee "OwnerRestored":
+  - la pierre est enlevee seulement (pas de transformation immediate)
+8. Si une bombe touche une pierre marquee "Replacement":
+  - la pierre est remplacee immediatement par la pierre du tireur
+9. Cas special du point 25:
+  - si une case garde la memoire d'un proprietaire d'origine (ex: bleu),
+  - et qu'un point adverse (ex: rouge) est pose dessus,
+  - alors quand le proprietaire d'origine rebombarde cette case,
+  - le point adverse se transforme en point du proprietaire d'origine.
+10. Apres suppression/restauration/remplacement, le moteur rescane les lignes de 5 et conserve les protections existantes.
+11. La vue est resynchronisee avec l'etat moteur.
+12. L'action bombe est enregistree en base et en historique local.
+13. Passage au joueur suivant (meme en cas d'echec du tir).
+
+### 8.1) Etat interne utilise pour la bombe
+
+- Le moteur conserve 2 structures de suivi:
+  - case -> proprietaire d'origine bombarde (_restorableBombPointsByOwner)
+  - case -> type de pierre creee par bombe (_bombStoneKindsByPosition)
+- Types de pierre creee par bombe:
+  - OwnerRestored: pierre remise par son proprietaire sur sa case bombardee
+  - Replacement: pierre transformee/posee immediatement apres impact de bombe
+
+### 8.2) Simulation rapide (cas valide final)
+
+1. Bleu pose un point.
+2. Rouge bombe ce point bleu -> le point bleu est retire.
+3. Bleu rebombe la meme case vide -> le point bleu reapparait (OwnerRestored).
+4. Rouge rebombe cette case -> le point bleu est retire, mais ne devient pas rouge (regle 24).
+5. Rouge pose plus tard un point sur une case memorisee comme anciennement bleue.
+6. Bleu rebombe cette case -> le point rouge se transforme en bleu (regle 25).
 
 ## 9) Undo / Retour (Ctrl+Z ou bouton)
 
