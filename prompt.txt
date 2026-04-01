@@ -115,3 +115,6 @@ Si le joueur 1 decide de bombarder ce point rouge , il se transforme en bleu
 26 - On a un nouveau style de jeu , on nous propose de un système de suggestion de point , je m'explique : 
 Par exemple , le joueur 1 place 4 points , alors , le jeu detectera automatiquement les points qu'il pourrait poser pour que 
 ça forme une nouvelle ligne . Je veux un interface en bas à coté du bouton terminé qui me compte le nombre de suggestion possible pour le joueur concerneé
+
+27 - Okkeee , maintenant rajoute une autre suggestion si le joueur place 3 points , 
+même principe mais si le joueur pourrait poser une ligne dans les 2 prochain coup 

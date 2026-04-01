@@ -70,6 +70,49 @@ public sealed class GomokuEngine
     }
 
     /// <summary>
+    /// Retourne les cases vides qui ne gagnent pas immédiatement,
+    /// mais qui permettent une ligne au coup suivant (2 coups au total).
+    /// </summary>
+    public IReadOnlyList<Point> GetTwoMoveSuggestedPoints(Color stoneColor)
+    {
+        var suggestedPoints = new List<Point>();
+
+        for (int y = 0; y < GridHeight; y++)
+        {
+            for (int x = 0; x < GridWidth; x++)
+            {
+                Point firstMove = new Point(x, y);
+                if (_stonesByPosition.ContainsKey(firstMove))
+                {
+                    continue;
+                }
+
+                // Cette catégorie vise les plans en 2 coups, pas les gains immédiats.
+                if (WouldCreateWinningLine(firstMove, stoneColor))
+                {
+                    continue;
+                }
+
+                if (WouldCreateWinningLineInTwoMoves(firstMove, stoneColor))
+                {
+                    suggestedPoints.Add(firstMove);
+                }
+            }
+        }
+
+        TerminalLogger.Action($"Two-move suggestion scan done for color={stoneColor.Name}, count={suggestedPoints.Count}");
+        return suggestedPoints;
+    }
+
+    /// <summary>
+    /// Retourne le nombre de suggestions jouables en 2 coups.
+    /// </summary>
+    public int GetTwoMoveSuggestionCount(Color stoneColor)
+    {
+        return GetTwoMoveSuggestedPoints(stoneColor).Count;
+    }
+
+    /// <summary>
     /// Initialise le moteur avec une taille de grille fixe.
     /// </summary>
     public GomokuEngine(int gridWidth, int gridHeight)
@@ -305,7 +348,7 @@ public sealed class GomokuEngine
     /// <summary>
     /// Recherche les nouvelles lignes créées par le dernier coup posé.
     /// </summary>
-    private List<WinningLine> FindNewWinningLines(GameStone originStone)
+    private List<WinningLine> FindNewWinningLines(GameStone originStone, bool logDetails = true)
     {
         // Scan orienté autour du dernier coup pour trouver uniquement les nouvelles lignes.
         var lines = new List<WinningLine>();
@@ -314,7 +357,10 @@ public sealed class GomokuEngine
         {
             List<Point> alignedRun = CollectAlignedRunPoints(originStone, dx, dy);
             int originIndex = alignedRun.FindIndex(p => p.X == originStone.X && p.Y == originStone.Y);
-            TerminalLogger.Action($"Direction ({dx},{dy}) -> alignedRun={alignedRun.Count}, originIndex={originIndex}");
+            if (logDetails)
+            {
+                TerminalLogger.Action($"Direction ({dx},{dy}) -> alignedRun={alignedRun.Count}, originIndex={originIndex}");
+            }
 
             if (alignedRun.Count < 5 || originIndex < 0)
             {
@@ -332,14 +378,20 @@ public sealed class GomokuEngine
 
                 if (OverlapsExistingLineInSameDirection(alignedRun, startIndex, endIndex, dx, dy))
                 {
-                    TerminalLogger.Action($"5-block rejected: overlaps existing line in same direction (startIndex={startIndex}, endIndex={endIndex})");
+                    if (logDetails)
+                    {
+                        TerminalLogger.Action($"5-block rejected: overlaps existing line in same direction (startIndex={startIndex}, endIndex={endIndex})");
+                    }
                     continue;
                 }
 
                 Point start = alignedRun[startIndex];
                 Point end = alignedRun[endIndex];
                 lines.Add(new WinningLine(start, end, originStone.Color));
-                TerminalLogger.Action($"Exact 5-line found: start=({start.X},{start.Y}), end=({end.X},{end.Y}), color={originStone.Color.Name}");
+                if (logDetails)
+                {
+                    TerminalLogger.Action($"Exact 5-line found: start=({start.X},{start.Y}), end=({end.X},{end.Y}), color={originStone.Color.Name}");
+                }
             }
         }
 
@@ -446,11 +498,78 @@ public sealed class GomokuEngine
         _stonesByPosition[position] = simulatedStone;
         _stones.Add(simulatedStone);
 
-        bool wouldCreateLine = FindNewWinningLines(simulatedStone).Count > 0;
+        bool wouldCreateLine = FindNewWinningLines(simulatedStone, false).Count > 0;
 
         _stonesByPosition.Remove(position);
         _stones.Remove(simulatedStone);
         return wouldCreateLine;
+    }
+
+    /// <summary>
+    /// Vérifie si un premier coup donné permettrait un gain au coup suivant.
+    /// </summary>
+    private bool WouldCreateWinningLineInTwoMoves(Point firstMove, Color stoneColor)
+    {
+        var firstSimulatedStone = new GameStone(firstMove.X, firstMove.Y, stoneColor);
+        _stonesByPosition[firstMove] = firstSimulatedStone;
+        _stones.Add(firstSimulatedStone);
+
+        bool canWinOnSecondMove = false;
+        for (int y = 0; y < GridHeight && !canWinOnSecondMove; y++)
+        {
+            for (int x = 0; x < GridWidth; x++)
+            {
+                Point secondMove = new Point(x, y);
+                if (_stonesByPosition.ContainsKey(secondMove))
+                {
+                    continue;
+                }
+
+                if (WouldCreateWinningLineUsingRequiredPoint(secondMove, stoneColor, firstMove))
+                {
+                    canWinOnSecondMove = true;
+                    break;
+                }
+            }
+        }
+
+        _stonesByPosition.Remove(firstMove);
+        _stones.Remove(firstSimulatedStone);
+        return canWinOnSecondMove;
+    }
+
+    /// <summary>
+    /// Vérifie si un coup crée une ligne gagnante qui inclut obligatoirement un point donné.
+    /// </summary>
+    private bool WouldCreateWinningLineUsingRequiredPoint(Point move, Color stoneColor, Point requiredPoint)
+    {
+        var simulatedStone = new GameStone(move.X, move.Y, stoneColor);
+        _stonesByPosition[move] = simulatedStone;
+        _stones.Add(simulatedStone);
+
+        List<WinningLine> newLines = FindNewWinningLines(simulatedStone, false);
+        bool includesRequiredPoint = false;
+
+        foreach (WinningLine line in newLines)
+        {
+            foreach (Point linePoint in EnumerateLinePoints(line))
+            {
+                if (linePoint == requiredPoint)
+                {
+                    includesRequiredPoint = true;
+                    break;
+                }
+            }
+
+            if (includesRequiredPoint)
+            {
+                break;
+            }
+        }
+
+        _stonesByPosition.Remove(move);
+        _stones.Remove(simulatedStone);
+        return includesRequiredPoint;
     }
 
     /// <summary>

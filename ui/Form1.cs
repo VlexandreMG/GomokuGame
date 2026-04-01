@@ -683,9 +683,10 @@ namespace GomokuGame.ui
             }
 
             Color currentColor = _turnDetector.CurrentPlayer == _turnDetector.Player1 ? Color.Blue : Color.Red;
-            int suggestionCount = _engine.GetSuggestionCount(currentColor);
-            _suggestionCountLabel.Text = $"Suggestions ({_turnDetector.CurrentPlayer}) : {suggestionCount}";
-            TerminalLogger.Action($"Suggestions refreshed for {_turnDetector.CurrentPlayer}: {suggestionCount}");
+            int oneMoveSuggestionCount = _engine.GetSuggestionCount(currentColor);
+            int twoMoveSuggestionCount = _engine.GetTwoMoveSuggestionCount(currentColor);
+            _suggestionCountLabel.Text = $"Suggestions ({_turnDetector.CurrentPlayer}) - 1 coup: {oneMoveSuggestionCount} | 2 coups: {twoMoveSuggestionCount}";
+            TerminalLogger.Action($"Suggestions refreshed for {_turnDetector.CurrentPlayer}: oneMove={oneMoveSuggestionCount}, twoMoves={twoMoveSuggestionCount}");
         }
 
         private void ConfigurePartieMetadata(string player1Name, string player2Name, int gridSize, int partieId)
