@@ -121,3 +121,6 @@ même principe mais si le joueur pourrait poser une ligne dans les 2 prochain co
 
 28 - Maintenant je veux que , le label 1 coup et 2 coup soit clickable , qu'on on clique dessus le code affiche 
 une croît sur les partie où on peut mettre les prochains points pour former une ligne 
+
+29 - Ouii ça maarccheee , une dernière , je veux que chaque suggestion soit retenue par une table dans la base 
+comme ça si on refait une partie , le code s'en souviendra net 

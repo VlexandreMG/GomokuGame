@@ -47,6 +47,7 @@ namespace GomokuGame.ui
         // ---------- Accès données ----------
         private PartieService _partieService = null!;
         private ActionService _actionService = null!;
+        private SuggestionService _suggestionService = null!;
 
         // ---------- Historique local (source de vérité pour rebuild/undo) ----------
         private readonly List<ActionModel> _actionHistory = new List<ActionModel>();
@@ -159,9 +160,11 @@ namespace GomokuGame.ui
         {
             // Initialisation des services data (accès base).
             DatabaseManager databaseManager = new DatabaseManager();
+            databaseManager.EnsureSuggestionStorage();
             GenericRepository repository = databaseManager.Repository;
             _partieService = new PartieService(repository);
             _actionService = new ActionService(repository);
+            _suggestionService = new SuggestionService(repository);
             TerminalLogger.Action("Form initialized, waiting for startup menu");
         }
 
@@ -716,16 +719,80 @@ namespace GomokuGame.ui
                 return;
             }
 
-            Color currentColor = _turnDetector.CurrentPlayer == _turnDetector.Player1 ? Color.Blue : Color.Red;
-            _oneMoveSuggestions.Clear();
-            _oneMoveSuggestions.AddRange(_engine.GetSuggestedPoints(currentColor));
-            _twoMoveSuggestions.Clear();
-            _twoMoveSuggestions.AddRange(_engine.GetTwoMoveSuggestedPoints(currentColor));
+            if (!TryLoadSuggestionsFromDatabase())
+            {
+                ComputeSuggestionsFromEngine();
+                SaveSuggestionsToDatabase();
+            }
 
             _oneMoveSuggestionLink.Text = $"1 coup: {_oneMoveSuggestions.Count}";
             _twoMoveSuggestionLink.Text = $"2 coups: {_twoMoveSuggestions.Count}";
             ApplySuggestionOverlay();
             TerminalLogger.Action($"Suggestions refreshed for {_turnDetector.CurrentPlayer}: oneMove={_oneMoveSuggestions.Count}, twoMoves={_twoMoveSuggestions.Count}");
+        }
+
+        private bool TryLoadSuggestionsFromDatabase()
+        {
+            if (_currentPartieId <= 0)
+            {
+                return false;
+            }
+
+            bool hasOneMove = _suggestionService.TryGetSnapshot(
+                _currentPartieId,
+                _turnDetector.CurrentPlayer,
+                _turnNumber,
+                SuggestionService.SuggestionOneMove,
+                out IReadOnlyList<Point> oneMovePoints);
+
+            bool hasTwoMoves = _suggestionService.TryGetSnapshot(
+                _currentPartieId,
+                _turnDetector.CurrentPlayer,
+                _turnNumber,
+                SuggestionService.SuggestionTwoMoves,
+                out IReadOnlyList<Point> twoMovePoints);
+
+            if (!hasOneMove || !hasTwoMoves)
+            {
+                return false;
+            }
+
+            _oneMoveSuggestions.Clear();
+            _oneMoveSuggestions.AddRange(oneMovePoints);
+            _twoMoveSuggestions.Clear();
+            _twoMoveSuggestions.AddRange(twoMovePoints);
+            return true;
+        }
+
+        private void ComputeSuggestionsFromEngine()
+        {
+            Color currentColor = _turnDetector.CurrentPlayer == _turnDetector.Player1 ? Color.Blue : Color.Red;
+            _oneMoveSuggestions.Clear();
+            _oneMoveSuggestions.AddRange(_engine.GetSuggestedPoints(currentColor));
+            _twoMoveSuggestions.Clear();
+            _twoMoveSuggestions.AddRange(_engine.GetTwoMoveSuggestedPoints(currentColor));
+        }
+
+        private void SaveSuggestionsToDatabase()
+        {
+            if (_currentPartieId <= 0)
+            {
+                return;
+            }
+
+            _suggestionService.TrySaveSnapshot(
+                _currentPartieId,
+                _turnDetector.CurrentPlayer,
+                _turnNumber,
+                SuggestionService.SuggestionOneMove,
+                _oneMoveSuggestions);
+
+            _suggestionService.TrySaveSnapshot(
+                _currentPartieId,
+                _turnDetector.CurrentPlayer,
+                _turnNumber,
+                SuggestionService.SuggestionTwoMoves,
+                _twoMoveSuggestions);
         }
 
         private void OneMoveSuggestionLink_Click(object? sender, EventArgs e)

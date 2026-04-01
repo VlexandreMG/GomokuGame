@@ -20,3 +20,17 @@ CREATE TABLE actions (
     tour_numero INT NOT NULL, -- 1, 2, 3...
     type_action VARCHAR(10) -- 'POINT' ou 'BOMBE'
 );
+
+CREATE TABLE suggestions (
+    id SERIAL PRIMARY KEY,
+    partie_id INT REFERENCES partie(id),
+    player_name VARCHAR(50) NOT NULL,
+    tour_numero INT NOT NULL,
+    suggestion_type VARCHAR(20) NOT NULL, -- 'ONE_MOVE' ou 'TWO_MOVES'
+    suggestion_count INT NOT NULL,
+    points_json TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX uq_suggestions_turn_type
+    ON suggestions(partie_id, player_name, tour_numero, suggestion_type);
