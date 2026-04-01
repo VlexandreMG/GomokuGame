@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
 using GomokuGame.ui;
 using GomokuGame.ui.atoms; // Pour utiliser l'atome GamePoint
@@ -22,6 +23,7 @@ namespace GomokuGame.ui.organisms
         // Données affichées par l'organisme.
         public List<GamePoint> PlacedPoints { get; set; } = new List<GamePoint>();
         public List<(Point Start, Point End, Color Color)> WinningLines { get; } = new List<(Point Start, Point End, Color Color)>();
+        public List<(Point Position, bool IsVisible)> SuggestionMarkers { get; } = new List<(Point Position, bool IsVisible)>();
         public bool IsBombSelectionActive { get; private set; }
         public bool BombFromLeft { get; private set; }
         public int? SelectedBombRowOneBased { get; private set; }
@@ -29,6 +31,9 @@ namespace GomokuGame.ui.organisms
         private Point _transientShotCell;
         private Color _transientShotColor;
         private float _transientShotOpacity;
+        private Dictionary<Point, float> _suggestionOpacities = new Dictionary<Point, float>();
+        private bool _suggestionsBlinkingIn = false;
+        private bool _areSuggestionsVisible;
 
         /// <summary>
         /// Aucun contrôle enfant à créer: tout est dessiné dans OnPaint.
@@ -78,11 +83,12 @@ namespace GomokuGame.ui.organisms
             Graphics g = e.Graphics;
             g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
 
-            // Ordre de rendu: plateau -> repères -> canons -> points -> lignes gagnantes.
+            // Ordre de rendu: plateau -> repères -> canons -> points -> suggestions -> lignes gagnantes.
             DrawGridLines(g);
             DrawGridReferences(g);
             DrawBombCannons(g);
             DrawAllPoints(g);
+            DrawSuggestionMarkers(g);
             DrawWinningLine(g);
             DrawTransientShotMarker(g);
         }
@@ -365,6 +371,130 @@ namespace GomokuGame.ui.organisms
             Invalidate();
         }
 
+        /// <summary>
+        /// Met à jour la liste des suggestions affichées et réinitialise les animations.
+        /// </summary>
+        public void UpdateSuggestions(List<(Point Position, bool IsVisible)> suggestions)
+        {
+            SuggestionMarkers.Clear();
+            _suggestionOpacities.Clear();
+            _suggestionsBlinkingIn = true;
+
+            foreach (var (position, isVisible) in suggestions)
+            {
+                SuggestionMarkers.Add((position, isVisible));
+                _suggestionOpacities[position] = 0.1f; // Commence très transparent pour plus de contraste
+            }
+
+            Invalidate();
+        }
+
+        /// <summary>
+        /// Active/désactive l'affichage des marqueurs de suggestion.
+        /// </summary>
+        public void SetSuggestionsVisible(bool isVisible)
+        {
+            _areSuggestionsVisible = isVisible;
+            Invalidate();
+        }
+
+        /// <summary>
+        /// Nettoie toutes les suggestions affichées.
+        /// </summary>
+        public void ClearSuggestions()
+        {
+            SuggestionMarkers.Clear();
+            _suggestionOpacities.Clear();
+            _areSuggestionsVisible = false;
+            Invalidate();
+        }
+
+        /// <summary>
+        /// Dessine les croix clignotantes pour les suggestions de coups gagnants.
+        /// </summary>
+        private void DrawSuggestionMarkers(Graphics g)
+        {
+            if (SuggestionMarkers.Count == 0)
+            {
+                return;
+            }
+
+            if (!_areSuggestionsVisible)
+            {
+                return;
+            }
+
+            // Mettre à jour l'animation de clignotement
+            UpdateSuggestionAnimation();
+
+            foreach (var (position, isVisible) in SuggestionMarkers)
+            {
+                if (!isVisible)
+                {
+                    continue;
+                }
+
+                Point center = ToPixel(position);
+                float opacity = _suggestionOpacities.ContainsKey(position) 
+                    ? _suggestionOpacities[position] 
+                    : 0.6f;
+
+                int alpha = (int)(opacity * 255);
+                if (alpha < 0) alpha = 0;
+                if (alpha > 255) alpha = 255;
+
+                // Dessiner une croix jaune clignotante (épaisse et grande)
+                using (Pen pen = new Pen(Color.FromArgb(alpha, Color.Gold), 3.5f))
+                {
+                    pen.StartCap = System.Drawing.Drawing2D.LineCap.Round;
+                    pen.EndCap = System.Drawing.Drawing2D.LineCap.Round;
+                    int halfSize = CellSize / 2;
+                    g.DrawLine(pen, center.X - halfSize, center.Y - halfSize, 
+                                     center.X + halfSize, center.Y + halfSize);
+                    g.DrawLine(pen, center.X + halfSize, center.Y - halfSize, 
+                                     center.X - halfSize, center.Y + halfSize);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gère l'animation de clignotement des suggestions.
+        /// </summary>
+        private void UpdateSuggestionAnimation()
+        {
+            const float BLINK_SPEED = 0.15f; // Clignotement plus rapide
+            var positions = _suggestionOpacities.Keys.ToList();
+
+            foreach (var position in positions)
+            {
+                float opacity = _suggestionOpacities[position];
+
+                if (_suggestionsBlinkingIn)
+                {
+                    opacity += BLINK_SPEED;
+                    if (opacity >= 1.0f)
+                    {
+                        opacity = 1.0f;
+                        _suggestionsBlinkingIn = false;
+                    }
+                }
+                else
+                {
+                    opacity -= BLINK_SPEED;
+                    if (opacity <= 0.1f)
+                    {
+                        opacity = 0.1f;
+                        _suggestionsBlinkingIn = true;
+                    }
+                }
+
+                _suggestionOpacities[position] = opacity;
+            }
+        }
+
+        /// <summary>
+        /// Dessine la croix éphémère du tir canon.
+        /// </summary>
         private void DrawTransientShotMarker(Graphics g)
         {
             if (!_hasTransientShotMarker || _transientShotOpacity <= 0f)

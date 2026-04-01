@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
 using GomokuGame.core;
 using GomokuGame.core.events;
@@ -29,6 +30,8 @@ namespace GomokuGame.ui
         private Button _endGameButton = null!;
         private Button _undoButton = null!;
         private System.Windows.Forms.Timer _shotTraceTimer = null!;
+        private SuggestionIndicator _suggestionIndicator = null!;
+        private System.Windows.Forms.Timer _suggestionAnimationTimer = null!;
 
         // ---------- Composants métier ----------
         private GomokuEngine _engine = null!;
@@ -52,6 +55,7 @@ namespace GomokuGame.ui
         // ---------- Accès données ----------
         private PartieService _partieService = null!;
         private ActionService _actionService = null!;
+        private SuggestionService _suggestionService = null!;
 
         // ---------- Historique local (source de vérité pour rebuild/undo) ----------
         private readonly List<ActionModel> _actionHistory = new List<ActionModel>();
@@ -92,23 +96,43 @@ namespace GomokuGame.ui
             _endGameButton = new Button();
             _undoButton = new Button();
             _shotTraceTimer = new System.Windows.Forms.Timer();
+            _suggestionIndicator = new SuggestionIndicator();
+            _suggestionAnimationTimer = new System.Windows.Forms.Timer();
 
             _topPanel.Dock = DockStyle.Top;
             _topPanel.Height = 80;
             _topPanel.Padding = new Padding(12, 8, 12, 8);
 
-            _studentIdLabel.Text = "ETU003914";
-            _studentIdLabel.Font = new Font("Segoe UI", 20, FontStyle.Bold);
-            _studentIdLabel.ForeColor = Color.DarkBlue;
-            _studentIdLabel.TextAlign = ContentAlignment.MiddleRight;
-            _studentIdLabel.AutoSize = true;
-            _topPanel.Controls.Add(_studentIdLabel);
+            // Créer un TableLayoutPanel pour la topPanel
+            TableLayoutPanel topLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 3,
+                RowCount = 1
+            };
+            topLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 200f));
+            topLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+            topLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120f));
+
+            _suggestionIndicator.Width = 180;
+            _suggestionIndicator.Height = 35;
+            _suggestionIndicator.Visible = false;
+            topLayout.Controls.Add(_suggestionIndicator, 0, 0);
 
             _turnStatusLabel.Dock = DockStyle.Fill;
             _turnStatusLabel.TextAlign = ContentAlignment.MiddleLeft;
             _turnStatusLabel.Font = new Font("Segoe UI", 10, FontStyle.Bold);
             _turnStatusLabel.Text = "Tour en attente...";
-            _topPanel.Controls.Add(_turnStatusLabel);
+            topLayout.Controls.Add(_turnStatusLabel, 1, 0);
+
+            _studentIdLabel.Text = "ETU003914";
+            _studentIdLabel.Font = new Font("Segoe UI", 20, FontStyle.Bold);
+            _studentIdLabel.ForeColor = Color.DarkBlue;
+            _studentIdLabel.TextAlign = ContentAlignment.MiddleRight;
+            _studentIdLabel.Dock = DockStyle.Fill;
+            topLayout.Controls.Add(_studentIdLabel, 2, 0);
+
+            _topPanel.Controls.Add(topLayout);
 
             _boardHostPanel.Dock = DockStyle.Fill;
             _boardHostPanel.BackColor = Color.White;
@@ -205,6 +229,8 @@ namespace GomokuGame.ui
             _endGameButton.Click += EndGameButton_Click;
             _undoButton.Click += UndoButton_Click;
             _shotTraceTimer.Tick += ShotTraceTimer_Tick;
+            _suggestionAnimationTimer.Tick += SuggestionAnimationTimer_Tick;
+            _suggestionIndicator.OnToggleSuggestions += SuggestionIndicator_OnToggleSuggestions;
             this.KeyPreview = true;
             this.KeyDown += Form1_KeyDown;
             this.Shown += Form1_Shown;
@@ -218,6 +244,30 @@ namespace GomokuGame.ui
             {
                 _shotTraceTimer.Stop();
             }
+        }
+
+        private void SuggestionAnimationTimer_Tick(object? sender, EventArgs e)
+        {
+            // Force un redraw du plateau pour animer les suggestions
+            _board.Invalidate();
+        }
+
+        private void SuggestionIndicator_OnToggleSuggestions(object? sender, EventArgs e)
+        {
+            // Basculer la visibilité des suggestions
+            _board.SetSuggestionsVisible(_suggestionIndicator.SuggestionsVisible);
+
+            if (_suggestionIndicator.SuggestionsVisible)
+            {
+                _suggestionAnimationTimer.Interval = 50;
+                _suggestionAnimationTimer.Start();
+            }
+            else
+            {
+                _suggestionAnimationTimer.Stop();
+            }
+
+            _board.Invalidate();
         }
 
         private void PlacePointButton_Click(object? sender, EventArgs e)
@@ -256,6 +306,7 @@ namespace GomokuGame.ui
             GenericRepository repository = databaseManager.Repository;
             _partieService = new PartieService(repository);
             _actionService = new ActionService(repository);
+            // Note: _suggestionService sera initialisé après la création du GomokuEngine
             TerminalLogger.Action("Form initialized, waiting for startup menu");
         }
 
@@ -534,8 +585,60 @@ namespace GomokuGame.ui
                 return;
             }
 
+            // Analyser et afficher les suggestions pour le joueur courant
+            AnalyzeAndDisplaySuggestions();
+
             ApplyActionSelectionUi();
             TerminalLogger.Action($"Turn UI refreshed for {_turnDetector.CurrentPlayer}");
+        }
+
+        private void AnalyzeAndDisplaySuggestions()
+        {
+            if (_suggestionService == null || _isGameInitialized == false)
+            {
+                return;
+            }
+
+            // Déterminer la couleur du joueur courant
+            Color playerColor = ResolvePlayerColor(_turnDetector.CurrentPlayer, _turnNumber);
+
+            // Analyser les suggestions et les stocker en DB
+            var suggestions = _suggestionService.AnalyzeAndSaveSuggestions(
+                _currentPartieId,
+                _turnDetector.CurrentPlayer,
+                _turnNumber,
+                playerColor
+            );
+
+            if (suggestions.Count == 0)
+            {
+                _board.ClearSuggestions();
+                _suggestionIndicator.SuggestionCount = 0;
+                _suggestionIndicator.Visible = false;
+                _suggestionIndicator.SuggestionsVisible = false;
+                _suggestionAnimationTimer.Stop();
+                return;
+            }
+
+            // Convertir en format pour le GameBoard
+            var boardSuggestions = suggestions
+                .Select(s => (s.Position, IsVisible: true))
+                .ToList();
+
+            // Mettre à jour l'affichage
+            _board.UpdateSuggestions(boardSuggestions);
+            
+            // Configurer l'indicateur
+            _suggestionIndicator.SuggestionCount = suggestions.Count;
+            _suggestionIndicator.SetPlayerColor(playerColor);
+            _suggestionIndicator.Visible = true;
+            _suggestionIndicator.SuggestionsVisible = false;
+            _board.SetSuggestionsVisible(false);
+
+            // L'animation démarre uniquement quand l'utilisateur affiche les suggestions.
+            _suggestionAnimationTimer.Stop();
+
+            TerminalLogger.Action($"Suggestions analyzed: {suggestions.Count} suggestions for {_turnDetector.CurrentPlayer}");
         }
 
         private static int? TryMapPowerFromKey(Keys key, bool isCtrlPressed)
@@ -734,6 +837,11 @@ namespace GomokuGame.ui
             _engine = new GomokuEngine(_gridWidth, _gridHeight);
             _turnDetector = new TurnDetector(_player1Name, _player2Name);
             _etatPartie = new EtatPartie();
+            
+            // Initialiser le service de suggestions avec la base de données
+            DatabaseManager databaseManager = new DatabaseManager();
+            _suggestionService = new SuggestionService(databaseManager.Repository, _engine);
+            
             _etatPartie.StartGame();
             _pendingBombRowOneBased = null;
             _isGameInitialized = true;

@@ -20,3 +20,14 @@ CREATE TABLE actions (
     tour_numero INT NOT NULL, -- 1, 2, 3...
     type_action VARCHAR(10) -- 'POINT' ou 'BOMBE'
 );
+
+CREATE TABLE suggestions (
+    id SERIAL PRIMARY KEY,
+    partie_id INT REFERENCES partie(id),
+    player_name VARCHAR(50) NOT NULL,
+    tour_numero INT NOT NULL,
+    position_x INT NOT NULL,
+    position_y INT NOT NULL,
+    suggestion_type INT NOT NULL, -- 1=ThreePoints, 2=FourPoints
+    date_creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
