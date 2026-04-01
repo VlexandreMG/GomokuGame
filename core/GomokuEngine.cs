@@ -225,6 +225,8 @@ public sealed class GomokuEngine
 
         if (TryConsumeRevivableCredit(targetCell, shooterColor))
         {
+            GameStone? restoredStone = null;
+
             if (_stonesByPosition.TryGetValue(targetCell, out GameStone? currentStone))
             {
                 if (currentStone.Color != shooterColor)
@@ -239,10 +241,18 @@ public sealed class GomokuEngine
 
             if (!_stonesByPosition.ContainsKey(targetCell))
             {
-                GameStone restoredStone = new GameStone(targetCell.X, targetCell.Y, shooterColor);
+                restoredStone = new GameStone(targetCell.X, targetCell.Y, shooterColor);
                 _stonesByPosition[targetCell] = restoredStone;
                 _stones.Add(restoredStone);
                 TerminalLogger.Action($"Bomb recall: restored owner stone at ({targetCell.X},{targetCell.Y}) color={shooterColor.Name}");
+            }
+
+            if (restoredStone is not null)
+            {
+                List<WinningLine> detectedLines = FindNewWinningLines(restoredStone);
+                List<WinningLine> acceptedLines = FilterOutCrossingRegisteredLines(detectedLines);
+                ProtectPointsFromNewWinningLines(acceptedLines);
+                TerminalLogger.Action($"Bomb recall line scan finished at ({targetCell.X},{targetCell.Y}), new winning lines={acceptedLines.Count}");
             }
 
             currentWinningLines = GetWinningLinesExactFive();

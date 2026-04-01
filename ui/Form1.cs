@@ -21,6 +21,7 @@ namespace GomokuGame.ui
         private GameBoard _board = null!;
         private Panel _topPanel = null!;
         private Label _turnStatusLabel = null!;
+        private Label _studentIdLabel = null!;
         private Panel _boardHostPanel = null!;
         private Panel _bottomPanel = null!;
         private Button _placePointButton = null!;
@@ -83,6 +84,7 @@ namespace GomokuGame.ui
             _board = new GameBoard();
             _topPanel = new Panel();
             _turnStatusLabel = new Label();
+            _studentIdLabel = new Label();
             _boardHostPanel = new Panel();
             _bottomPanel = new Panel();
             _placePointButton = new Button();
@@ -92,8 +94,15 @@ namespace GomokuGame.ui
             _shotTraceTimer = new System.Windows.Forms.Timer();
 
             _topPanel.Dock = DockStyle.Top;
-            _topPanel.Height = 44;
+            _topPanel.Height = 80;
             _topPanel.Padding = new Padding(12, 8, 12, 8);
+
+            _studentIdLabel.Text = "ETU003914";
+            _studentIdLabel.Font = new Font("Segoe UI", 20, FontStyle.Bold);
+            _studentIdLabel.ForeColor = Color.DarkBlue;
+            _studentIdLabel.TextAlign = ContentAlignment.MiddleRight;
+            _studentIdLabel.AutoSize = true;
+            _topPanel.Controls.Add(_studentIdLabel);
 
             _turnStatusLabel.Dock = DockStyle.Fill;
             _turnStatusLabel.TextAlign = ContentAlignment.MiddleLeft;
