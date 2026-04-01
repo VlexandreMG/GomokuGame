@@ -20,9 +20,11 @@ namespace GomokuGame.ui
         // ---------- Composants UI ----------
         private GameBoard _board = null!;
         private Panel _bottomPanel = null!;
+        private Panel _suggestionPanel = null!;
         private Button _endGameButton = null!;
         private Button _undoButton = null!;
-        private Label _suggestionCountLabel = null!;
+        private LinkLabel _oneMoveSuggestionLink = null!;
+        private LinkLabel _twoMoveSuggestionLink = null!;
 
         // ---------- Composants métier ----------
         private GomokuEngine _engine = null!;
@@ -48,6 +50,17 @@ namespace GomokuGame.ui
 
         // ---------- Historique local (source de vérité pour rebuild/undo) ----------
         private readonly List<ActionModel> _actionHistory = new List<ActionModel>();
+        private readonly List<Point> _oneMoveSuggestions = new List<Point>();
+        private readonly List<Point> _twoMoveSuggestions = new List<Point>();
+
+        private enum SuggestionOverlayMode
+        {
+            None,
+            OneMove,
+            TwoMoves
+        }
+
+        private SuggestionOverlayMode _suggestionOverlayMode = SuggestionOverlayMode.None;
 
         // ---------- Garde-fous pour éviter double-comptage visuel/score ----------
         private readonly HashSet<string> _awardedLineSignatures = new HashSet<string>();
@@ -76,9 +89,11 @@ namespace GomokuGame.ui
             // Instanciation des contrôles UI.
             _board = new GameBoard();
             _bottomPanel = new Panel();
+            _suggestionPanel = new Panel();
             _endGameButton = new Button();
             _undoButton = new Button();
-            _suggestionCountLabel = new Label();
+            _oneMoveSuggestionLink = new LinkLabel();
+            _twoMoveSuggestionLink = new LinkLabel();
 
             _bottomPanel.Dock = DockStyle.Bottom;
             _bottomPanel.Height = 56;
@@ -94,14 +109,23 @@ namespace GomokuGame.ui
             _undoButton.Text = "Retour (Ctrl+Z)";
             _undoButton.Enabled = false;
 
-            _suggestionCountLabel.Dock = DockStyle.Fill;
-            _suggestionCountLabel.TextAlign = ContentAlignment.MiddleLeft;
-            _suggestionCountLabel.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-            _suggestionCountLabel.Text = "Suggestions: -";
+            _suggestionPanel.Dock = DockStyle.Fill;
+
+            _oneMoveSuggestionLink.AutoSize = true;
+            _oneMoveSuggestionLink.Location = new Point(0, 10);
+            _oneMoveSuggestionLink.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            _oneMoveSuggestionLink.Text = "1 coup: -";
+
+            _twoMoveSuggestionLink.AutoSize = true;
+            _twoMoveSuggestionLink.Location = new Point(130, 10);
+            _twoMoveSuggestionLink.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            _twoMoveSuggestionLink.Text = "2 coups: -";
 
             _bottomPanel.Controls.Add(_endGameButton);
             _bottomPanel.Controls.Add(_undoButton);
-            _bottomPanel.Controls.Add(_suggestionCountLabel);
+            _suggestionPanel.Controls.Add(_oneMoveSuggestionLink);
+            _suggestionPanel.Controls.Add(_twoMoveSuggestionLink);
+            _bottomPanel.Controls.Add(_suggestionPanel);
             this.Controls.Add(_board);
             this.Controls.Add(_bottomPanel);
             TerminalLogger.Action("GameBoard component created and added to form");
@@ -124,6 +148,8 @@ namespace GomokuGame.ui
             _board.MouseClick += Board_MouseClick;
             _endGameButton.Click += EndGameButton_Click;
             _undoButton.Click += UndoButton_Click;
+            _oneMoveSuggestionLink.Click += OneMoveSuggestionLink_Click;
+            _twoMoveSuggestionLink.Click += TwoMoveSuggestionLink_Click;
             this.KeyPreview = true;
             this.KeyDown += Form1_KeyDown;
             this.Shown += Form1_Shown;
@@ -484,7 +510,10 @@ namespace GomokuGame.ui
             _board.DisableBombSelection();
             _endGameButton.Enabled = false;
             _undoButton.Enabled = false;
-            _suggestionCountLabel.Text = "Suggestions: partie terminée";
+            _oneMoveSuggestionLink.Text = "1 coup: partie terminée";
+            _twoMoveSuggestionLink.Text = "2 coups: partie terminée";
+            _suggestionOverlayMode = SuggestionOverlayMode.None;
+            _board.ClearSuggestionOverlay();
 
             bool replayRequested = GameResultAlert.ShowResultAndAskReplay(
                 this,
@@ -625,6 +654,9 @@ namespace GomokuGame.ui
             _etatPartie = new EtatPartie();
             _etatPartie.StartGame();
             _pendingBombRowOneBased = null;
+            _suggestionOverlayMode = SuggestionOverlayMode.None;
+            _oneMoveSuggestions.Clear();
+            _twoMoveSuggestions.Clear();
             _isGameInitialized = true;
             _endGameButton.Enabled = true;
             _undoButton.Enabled = true;
@@ -678,15 +710,71 @@ namespace GomokuGame.ui
         {
             if (!_isGameInitialized || !_etatPartie.IsInProgress)
             {
-                _suggestionCountLabel.Text = "Suggestions: -";
+                _oneMoveSuggestionLink.Text = "1 coup: -";
+                _twoMoveSuggestionLink.Text = "2 coups: -";
+                _board.ClearSuggestionOverlay();
                 return;
             }
 
             Color currentColor = _turnDetector.CurrentPlayer == _turnDetector.Player1 ? Color.Blue : Color.Red;
-            int oneMoveSuggestionCount = _engine.GetSuggestionCount(currentColor);
-            int twoMoveSuggestionCount = _engine.GetTwoMoveSuggestionCount(currentColor);
-            _suggestionCountLabel.Text = $"Suggestions ({_turnDetector.CurrentPlayer}) - 1 coup: {oneMoveSuggestionCount} | 2 coups: {twoMoveSuggestionCount}";
-            TerminalLogger.Action($"Suggestions refreshed for {_turnDetector.CurrentPlayer}: oneMove={oneMoveSuggestionCount}, twoMoves={twoMoveSuggestionCount}");
+            _oneMoveSuggestions.Clear();
+            _oneMoveSuggestions.AddRange(_engine.GetSuggestedPoints(currentColor));
+            _twoMoveSuggestions.Clear();
+            _twoMoveSuggestions.AddRange(_engine.GetTwoMoveSuggestedPoints(currentColor));
+
+            _oneMoveSuggestionLink.Text = $"1 coup: {_oneMoveSuggestions.Count}";
+            _twoMoveSuggestionLink.Text = $"2 coups: {_twoMoveSuggestions.Count}";
+            ApplySuggestionOverlay();
+            TerminalLogger.Action($"Suggestions refreshed for {_turnDetector.CurrentPlayer}: oneMove={_oneMoveSuggestions.Count}, twoMoves={_twoMoveSuggestions.Count}");
+        }
+
+        private void OneMoveSuggestionLink_Click(object? sender, EventArgs e)
+        {
+            if (!_isGameInitialized || !_etatPartie.IsInProgress)
+            {
+                return;
+            }
+
+            _suggestionOverlayMode = _suggestionOverlayMode == SuggestionOverlayMode.OneMove
+                ? SuggestionOverlayMode.None
+                : SuggestionOverlayMode.OneMove;
+
+            ApplySuggestionOverlay();
+        }
+
+        private void TwoMoveSuggestionLink_Click(object? sender, EventArgs e)
+        {
+            if (!_isGameInitialized || !_etatPartie.IsInProgress)
+            {
+                return;
+            }
+
+            _suggestionOverlayMode = _suggestionOverlayMode == SuggestionOverlayMode.TwoMoves
+                ? SuggestionOverlayMode.None
+                : SuggestionOverlayMode.TwoMoves;
+
+            ApplySuggestionOverlay();
+        }
+
+        private void ApplySuggestionOverlay()
+        {
+            switch (_suggestionOverlayMode)
+            {
+                case SuggestionOverlayMode.OneMove:
+                    _board.SetSuggestionOverlay(_oneMoveSuggestions, Color.ForestGreen);
+                    TerminalLogger.Action($"Suggestion overlay enabled: oneMove={_oneMoveSuggestions.Count}");
+                    break;
+
+                case SuggestionOverlayMode.TwoMoves:
+                    _board.SetSuggestionOverlay(_twoMoveSuggestions, Color.DarkOrange);
+                    TerminalLogger.Action($"Suggestion overlay enabled: twoMoves={_twoMoveSuggestions.Count}");
+                    break;
+
+                default:
+                    _board.ClearSuggestionOverlay();
+                    TerminalLogger.Action("Suggestion overlay disabled");
+                    break;
+            }
         }
 
         private void ConfigurePartieMetadata(string player1Name, string player2Name, int gridSize, int partieId)

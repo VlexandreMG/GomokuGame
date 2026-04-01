@@ -118,3 +118,6 @@ Par exemple , le joueur 1 place 4 points , alors , le jeu detectera automatiquem
 
 27 - Okkeee , maintenant rajoute une autre suggestion si le joueur place 3 points , 
 même principe mais si le joueur pourrait poser une ligne dans les 2 prochain coup 
+
+28 - Maintenant je veux que , le label 1 coup et 2 coup soit clickable , qu'on on clique dessus le code affiche 
+une croît sur les partie où on peut mettre les prochains points pour former une ligne 

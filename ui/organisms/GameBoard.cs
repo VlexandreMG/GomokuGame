@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
 using GomokuGame.ui;
 using GomokuGame.ui.atoms; // Pour utiliser l'atome GamePoint
@@ -21,6 +22,8 @@ namespace GomokuGame.ui.organisms
         // Données affichées par l'organisme.
         public List<GamePoint> PlacedPoints { get; set; } = new List<GamePoint>();
         public List<(Point Start, Point End, Color Color)> WinningLines { get; } = new List<(Point Start, Point End, Color Color)>();
+        public List<Point> SuggestedPointsOverlay { get; } = new List<Point>();
+        public Color SuggestionOverlayColor { get; private set; } = Color.ForestGreen;
         public bool IsBombSelectionActive { get; private set; }
         public bool BombFromLeft { get; private set; }
         public int? SelectedBombRowOneBased { get; private set; }
@@ -77,8 +80,29 @@ namespace GomokuGame.ui.organisms
             DrawGridLines(g);
             DrawGridReferences(g);
             DrawBombCannons(g);
+            DrawSuggestionCrosses(g);
             DrawAllPoints(g);
             DrawWinningLine(g);
+        }
+
+        /// <summary>
+        /// Affiche les suggestions sous forme de croix colorées.
+        /// </summary>
+        public void SetSuggestionOverlay(IEnumerable<Point> points, Color overlayColor)
+        {
+            SuggestedPointsOverlay.Clear();
+            SuggestedPointsOverlay.AddRange(points.Distinct());
+            SuggestionOverlayColor = overlayColor;
+            Invalidate();
+        }
+
+        /// <summary>
+        /// Efface toutes les croix de suggestion affichées.
+        /// </summary>
+        public void ClearSuggestionOverlay()
+        {
+            SuggestedPointsOverlay.Clear();
+            Invalidate();
         }
 
         /// <summary>
@@ -295,6 +319,27 @@ namespace GomokuGame.ui.organisms
                 {
                     g.DrawLine(winPen, startPixel, endPixel);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Dessine une croix sur chaque case suggérée.
+        /// </summary>
+        private void DrawSuggestionCrosses(Graphics g)
+        {
+            if (SuggestedPointsOverlay.Count == 0)
+            {
+                return;
+            }
+
+            using Pen suggestionPen = new Pen(SuggestionOverlayColor, 2);
+            const int halfSize = 8;
+
+            foreach (Point boardPoint in SuggestedPointsOverlay)
+            {
+                Point center = ToPixel(boardPoint);
+                g.DrawLine(suggestionPen, center.X - halfSize, center.Y - halfSize, center.X + halfSize, center.Y + halfSize);
+                g.DrawLine(suggestionPen, center.X - halfSize, center.Y + halfSize, center.X + halfSize, center.Y - halfSize);
             }
         }
 
