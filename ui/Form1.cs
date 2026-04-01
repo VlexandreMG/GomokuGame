@@ -22,6 +22,7 @@ namespace GomokuGame.ui
         private Panel _bottomPanel = null!;
         private Button _endGameButton = null!;
         private Button _undoButton = null!;
+        private Label _suggestionCountLabel = null!;
 
         // ---------- Composants métier ----------
         private GomokuEngine _engine = null!;
@@ -77,6 +78,7 @@ namespace GomokuGame.ui
             _bottomPanel = new Panel();
             _endGameButton = new Button();
             _undoButton = new Button();
+            _suggestionCountLabel = new Label();
 
             _bottomPanel.Dock = DockStyle.Bottom;
             _bottomPanel.Height = 56;
@@ -92,8 +94,14 @@ namespace GomokuGame.ui
             _undoButton.Text = "Retour (Ctrl+Z)";
             _undoButton.Enabled = false;
 
+            _suggestionCountLabel.Dock = DockStyle.Fill;
+            _suggestionCountLabel.TextAlign = ContentAlignment.MiddleLeft;
+            _suggestionCountLabel.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            _suggestionCountLabel.Text = "Suggestions: -";
+
             _bottomPanel.Controls.Add(_endGameButton);
             _bottomPanel.Controls.Add(_undoButton);
+            _bottomPanel.Controls.Add(_suggestionCountLabel);
             this.Controls.Add(_board);
             this.Controls.Add(_bottomPanel);
             TerminalLogger.Action("GameBoard component created and added to form");
@@ -414,6 +422,8 @@ namespace GomokuGame.ui
                 return;
             }
 
+            RefreshSuggestionCounter();
+
             TurnAction selectedAction = TurnActionAlert.ShowTurnChoice(this, _turnDetector.CurrentPlayer);
             _turnDetector.SetCurrentAction(selectedAction);
             TerminalLogger.Action($"Action prompt displayed for {_turnDetector.CurrentPlayer}");
@@ -474,6 +484,7 @@ namespace GomokuGame.ui
             _board.DisableBombSelection();
             _endGameButton.Enabled = false;
             _undoButton.Enabled = false;
+            _suggestionCountLabel.Text = "Suggestions: partie terminée";
 
             bool replayRequested = GameResultAlert.ShowResultAndAskReplay(
                 this,
@@ -656,10 +667,25 @@ namespace GomokuGame.ui
             }
 
             _board.Invalidate();
+            RefreshSuggestionCounter();
             if (showActionPrompt)
             {
                 PromptCurrentTurnAction();
             }
+        }
+
+        private void RefreshSuggestionCounter()
+        {
+            if (!_isGameInitialized || !_etatPartie.IsInProgress)
+            {
+                _suggestionCountLabel.Text = "Suggestions: -";
+                return;
+            }
+
+            Color currentColor = _turnDetector.CurrentPlayer == _turnDetector.Player1 ? Color.Blue : Color.Red;
+            int suggestionCount = _engine.GetSuggestionCount(currentColor);
+            _suggestionCountLabel.Text = $"Suggestions ({_turnDetector.CurrentPlayer}) : {suggestionCount}";
+            TerminalLogger.Action($"Suggestions refreshed for {_turnDetector.CurrentPlayer}: {suggestionCount}");
         }
 
         private void ConfigurePartieMetadata(string player1Name, string player2Name, int gridSize, int partieId)

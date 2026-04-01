@@ -111,3 +111,7 @@ Mais le joueur 1 renvoie une bomb sur le point du joueur 2 , et il se transforme
 
 25 - Le problème de 24 est enlevé mais , je veux maintenant que lorsqu'il y a un point rouge (joueur 2) sur l'endroit où on a bombarder le point bleu (joueur 1)
 Si le joueur 1 decide de bombarder ce point rouge , il se transforme en bleu 
+
+26 - On a un nouveau style de jeu , on nous propose de un système de suggestion de point , je m'explique : 
+Par exemple , le joueur 1 place 4 points , alors , le jeu detectera automatiquement les points qu'il pourrait poser pour que 
+ça forme une nouvelle ligne . Je veux un interface en bas à coté du bouton terminé qui me compte le nombre de suggestion possible pour le joueur concerneé

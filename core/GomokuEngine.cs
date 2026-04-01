@@ -33,6 +33,43 @@ public sealed class GomokuEngine
     public IReadOnlyList<GameStone> Stones => _stones;
 
     /// <summary>
+    /// Retourne les cases vides qui créeraient au moins une nouvelle ligne de 5
+    /// si le joueur courant y pose une pierre.
+    /// </summary>
+    public IReadOnlyList<Point> GetSuggestedPoints(Color stoneColor)
+    {
+        var suggestedPoints = new List<Point>();
+
+        for (int y = 0; y < GridHeight; y++)
+        {
+            for (int x = 0; x < GridWidth; x++)
+            {
+                Point candidate = new Point(x, y);
+                if (_stonesByPosition.ContainsKey(candidate))
+                {
+                    continue;
+                }
+
+                if (WouldCreateWinningLine(candidate, stoneColor))
+                {
+                    suggestedPoints.Add(candidate);
+                }
+            }
+        }
+
+        TerminalLogger.Action($"Suggestion scan done for color={stoneColor.Name}, count={suggestedPoints.Count}");
+        return suggestedPoints;
+    }
+
+    /// <summary>
+    /// Retourne uniquement le nombre de suggestions disponibles.
+    /// </summary>
+    public int GetSuggestionCount(Color stoneColor)
+    {
+        return GetSuggestedPoints(stoneColor).Count;
+    }
+
+    /// <summary>
     /// Initialise le moteur avec une taille de grille fixe.
     /// </summary>
     public GomokuEngine(int gridWidth, int gridHeight)
@@ -397,6 +434,23 @@ public sealed class GomokuEngine
 
         var p = new Point(x, y);
         return _stonesByPosition.TryGetValue(p, out GameStone? stone) && stone.Color == color;
+    }
+
+    /// <summary>
+    /// Simule un coup sans effet de bord pour savoir s'il crée une nouvelle ligne.
+    /// </summary>
+    private bool WouldCreateWinningLine(Point position, Color stoneColor)
+    {
+        // Simulation locale: ajout temporaire d'une pierre, scan, puis rollback immédiat.
+        var simulatedStone = new GameStone(position.X, position.Y, stoneColor);
+        _stonesByPosition[position] = simulatedStone;
+        _stones.Add(simulatedStone);
+
+        bool wouldCreateLine = FindNewWinningLines(simulatedStone).Count > 0;
+
+        _stonesByPosition.Remove(position);
+        _stones.Remove(simulatedStone);
+        return wouldCreateLine;
     }
 
     /// <summary>
